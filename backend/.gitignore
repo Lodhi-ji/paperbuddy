@@ -1,0 +1,17 @@
+node_modules/
+dist/
+
+# Environment files (sensitive keys/passwords)
+.env
+.env.test
+*.env.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
