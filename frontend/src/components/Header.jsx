@@ -4,7 +4,7 @@ import { Search, Bell, Moon, Sun, User, Lock, KeyRound, Loader2, X, Eye, EyeOff 
 import { api } from '../api';
 
 export default function Header() {
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -101,6 +101,15 @@ export default function Header() {
             title="Account Settings"
           >
             {user?.name ? user.name.slice(0, 2).toUpperCase() : <User className="w-5 h-5" />}
+          </button>
+
+          {/* Logout / Exit Cross Button */}
+          <button 
+            onClick={logout}
+            className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 hover:text-rose-500 hover:border-rose-300 hover:bg-rose-50/30 transition-all"
+            title="Logout / Exit"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>

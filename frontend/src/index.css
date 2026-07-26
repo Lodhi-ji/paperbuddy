@@ -72,6 +72,10 @@
 }
 
 /* Print formatting for receipt */
+.print-only {
+  display: none !important;
+}
+
 @media print {
   body {
     background: white !important;
