@@ -149,10 +149,10 @@ export default function Login() {
         <motion.div 
           animate={{ scale: [1, 1.03, 1] }}
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          className="relative z-20 w-24 h-24 rounded-full bg-white border border-[#E5E7EB] shadow-[0_0_50px_rgba(255,255,255,0.15)] flex items-center justify-center overflow-hidden"
+          className="relative z-20 w-32 h-32 rounded-full bg-white border border-[#E5E7EB] shadow-[0_0_50px_rgba(255,255,255,0.15)] flex items-center justify-center overflow-hidden"
         >
           <div className="absolute inset-0.5 rounded-full bg-gradient-to-tr from-[#5B5CEB]/10 to-white blur-sm" />
-          <img src="/campuspay-logo.png" alt="CampusPay" className="h-10 w-auto object-contain relative z-10 scale-[1.3] transform-gpu" />
+          <img src="/campuspay-logo.png" alt="CampusPay" className="h-14 w-auto object-contain relative z-10 scale-[1.2] transform-gpu" />
           
           {/* Logo labels */}
           <div className="absolute -bottom-8 whitespace-nowrap text-center">
