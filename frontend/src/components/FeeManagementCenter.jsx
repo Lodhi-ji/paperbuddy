@@ -28,6 +28,8 @@ import {
 
 export default function FeeManagementCenter({
   feeTypes,
+  structures,
+  students,
   typeName, setTypeName,
   typeDesc, setTypeDesc,
   typeRecurring, setTypeRecurring,
@@ -59,19 +61,82 @@ export default function FeeManagementCenter({
     }).format(amount);
   };
 
-  // Mock data for visualizations and missing backend entities
-  const pieData = [
-    { name: 'Tuition Fee', value: 72, color: '#8b5cf6' }, // brand-primary
-    { name: 'Transport Fee', value: 12, color: '#3b82f6' }, // blue-500
-    { name: 'Lab Fee', value: 8, color: '#10b981' }, // emerald-500
-    { name: 'Exam Fee', value: 8, color: '#f59e0b' }, // amber-500
-  ];
+  const COLORS = ['#6366F1', '#EC4899', '#10B981', '#F59E0B', '#3B82F6', '#8B5CF6'];
 
-  const mockStructures = [
-    { class: 'Grade 8', categories: 4, amount: 18000 },
-    { class: 'Grade 9', categories: 5, amount: 21500 },
-    { class: 'Grade 10', categories: 6, amount: 24000 }
-  ];
+  // Calculate dynamic stats for each Category Card
+  const getStatsForType = (typeId) => {
+    const typeStructures = structures?.filter(s => s.feeTypeId === typeId) || [];
+    const structureIds = typeStructures.map(s => s.id);
+    
+    let studentCount = 0;
+    if (students && structureIds.length > 0) {
+      students.forEach(student => {
+        const hasFee = student.studentFees?.some(sf => structureIds.includes(sf.feeStructureId));
+        if (hasFee) studentCount++;
+      });
+    }
+    
+    let avgAmount = 0;
+    if (typeStructures.length > 0) {
+      const totalAmount = typeStructures.reduce((sum, s) => sum + Number(s.amount), 0);
+      avgAmount = totalAmount / typeStructures.length;
+    }
+    
+    return { studentCount, avgAmount };
+  };
+
+  // Group real structures by class grade
+  const classGrouped = {};
+  if (structures && structures.length > 0) {
+    structures.forEach(s => {
+      const className = s.class;
+      if (!classGrouped[className]) {
+        classGrouped[className] = {
+          class: className,
+          categories: 0,
+          amount: 0,
+          academicYear: s.academicYear,
+          feeTypeIds: new Set()
+        };
+      }
+      classGrouped[className].categories++;
+      classGrouped[className].amount += Number(s.amount);
+      classGrouped[className].feeTypeIds.add(s.feeTypeId);
+    });
+  }
+  const realStructures = Object.values(classGrouped).map(g => ({
+    class: `Grade ${g.class}`,
+    rawClass: g.class,
+    categories: g.feeTypeIds.size,
+    amount: g.amount,
+    academicYear: g.academicYear,
+  })).sort((a, b) => a.rawClass.localeCompare(b.rawClass, undefined, { numeric: true }));
+
+  const getStudentsCountForClass = (className) => {
+    const classStudents = students?.filter(st => st.class === className) || [];
+    const assignedCount = classStudents.filter(st => st.studentFees?.length > 0).length;
+    return { total: classStudents.length, assigned: assignedCount };
+  };
+
+  // Dynamic fee assignment progress metrics
+  const totalStudents = students?.length || 0;
+  const assignedStudents = students?.filter(st => st.studentFees && st.studentFees.length > 0).length || 0;
+  const assignmentProgress = totalStudents ? Math.round((assignedStudents / totalStudents) * 100) : 0;
+
+  // Dynamic category distribution data
+  const categoryAmounts = {};
+  if (structures && structures.length > 0) {
+    structures.forEach(s => {
+      const typeName = s.feeType?.name || 'Other';
+      categoryAmounts[typeName] = (categoryAmounts[typeName] || 0) + Number(s.amount);
+    });
+  }
+  const totalStructureAmt = Object.values(categoryAmounts).reduce((a, b) => a + b, 0);
+  const pieData = Object.keys(categoryAmounts).map((name, idx) => ({
+    name,
+    value: totalStructureAmt ? Math.round((categoryAmounts[name] / totalStructureAmt) * 100) : 0,
+    color: COLORS[idx % COLORS.length]
+  }));
 
   const mockTemplates = [
     { name: 'CBSE Primary', classes: 'Grade 1-5', amount: 15000 },
@@ -124,14 +189,14 @@ export default function FeeManagementCenter({
         <div className="glass-card rounded-[20px] p-5 border border-white/40 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
           <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl -mr-8 -mt-8" />
           <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Active Structures</h3>
-          <div className="text-3xl font-black text-slate-800">12</div>
+          <div className="text-3xl font-black text-slate-800">{structures?.length || 0}</div>
         </div>
         <div className="glass-card rounded-[20px] p-5 border border-white/40 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
           <div className="absolute top-0 right-0 w-24 h-24 bg-brand-primary/10 rounded-full blur-2xl -mr-8 -mt-8" />
           <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1 flex items-center gap-2">
             Students Assigned
           </h3>
-          <div className="text-3xl font-black text-slate-800">1,248</div>
+          <div className="text-3xl font-black text-slate-800">{students?.length || 0}</div>
         </div>
       </div>
 
@@ -249,9 +314,9 @@ export default function FeeManagementCenter({
                       </div>
                       <div className="pt-4 border-t border-slate-100 flex justify-between items-center text-xs">
                         <div className="font-bold text-slate-500 flex items-center gap-1.5">
-                          <Users className="w-4 h-4 text-slate-400" /> Assigned to ~320 Students
+                          <Users className="w-4 h-4 text-slate-400" /> Assigned to {getStatsForType(type.id).studentCount} Students
                         </div>
-                        <div className="font-mono font-bold text-slate-700 bg-slate-50 px-2 py-1 rounded">Avg ₹1,200</div>
+                        <div className="font-mono font-bold text-slate-700 bg-slate-50 px-2 py-1 rounded">Avg {formatCurrency(getStatsForType(type.id).avgAmount)}</div>
                       </div>
                     </div>
                   ))
@@ -281,39 +346,47 @@ export default function FeeManagementCenter({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Premium Structure Cards (Mocked for visual UX since backend is structure-per-fee) */}
-                  {mockStructures.map((struct, idx) => (
-                    <div key={idx} className="glass-card rounded-[24px] p-6 border border-white/40 shadow-sm group hover:shadow-md transition-all">
-                      <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <h4 className="text-xl font-black text-slate-800 tracking-tight">{struct.class}</h4>
-                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Academic Year 2025-26</div>
+                  {realStructures.length > 0 ? (
+                    realStructures.map((struct, idx) => {
+                      const classStats = getStudentsCountForClass(struct.rawClass);
+                      return (
+                        <div key={idx} className="glass-card rounded-[24px] p-6 border border-white/40 shadow-sm group hover:shadow-md transition-all">
+                          <div className="flex justify-between items-start mb-6">
+                            <div>
+                              <h4 className="text-xl font-black text-slate-800 tracking-tight">{struct.class}</h4>
+                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">AY {struct.academicYear}</div>
+                            </div>
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-50 to-brand-primary/10 border border-white shadow-sm flex items-center justify-center text-brand-primary font-black">
+                              {struct.categories}
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-3 mb-6">
+                            <div className="flex justify-between items-center text-xs font-bold text-slate-600">
+                              <span>Total Categories</span>
+                              <span>{struct.categories} Active</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs font-bold text-slate-600">
+                              <span>Total Annual Fee</span>
+                              <span className="text-emerald-600 font-black">{formatCurrency(struct.amount)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs font-bold text-slate-600">
+                              <span>Students Assigned</span>
+                              <span>{classStats.assigned} / {classStats.total}</span>
+                            </div>
+                          </div>
+                          
+                          <button className="w-full py-2.5 rounded-xl border border-slate-200 bg-white text-brand-primary text-xs font-bold hover:bg-brand-primary hover:text-white hover:border-brand-primary transition-colors flex justify-center items-center gap-2">
+                            View Complete Breakdown <ArrowRight className="w-4 h-4" />
+                          </button>
                         </div>
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-50 to-brand-primary/10 border border-white shadow-sm flex items-center justify-center text-brand-primary font-black">
-                          {struct.categories}
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-3 mb-6">
-                        <div className="flex justify-between items-center text-xs font-bold text-slate-600">
-                          <span>Total Categories</span>
-                          <span>{struct.categories} Active</span>
-                        </div>
-                        <div className="flex justify-between items-center text-xs font-bold text-slate-600">
-                          <span>Total Annual Fee</span>
-                          <span className="text-emerald-600 font-black">{formatCurrency(struct.amount)}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-xs font-bold text-slate-600">
-                          <span>Students Assigned</span>
-                          <span>~120</span>
-                        </div>
-                      </div>
-                      
-                      <button className="w-full py-2.5 rounded-xl border border-slate-200 bg-white text-brand-primary text-xs font-bold hover:bg-brand-primary hover:text-white hover:border-brand-primary transition-colors flex justify-center items-center gap-2">
-                        View Complete Breakdown <ArrowRight className="w-4 h-4" />
-                      </button>
+                      );
+                    })
+                  ) : (
+                    <div className="col-span-full py-12 text-center text-slate-400 text-sm font-bold">
+                      No class fee structures configured yet. Create one to get started.
                     </div>
-                  ))}
+                  )}
                 </div>
 
                 {/* Assignment Progress & Insights Section */}
@@ -325,16 +398,16 @@ export default function FeeManagementCenter({
                       <div className="space-y-4">
                         <div className="flex justify-between items-end">
                           <div>
-                            <div className="text-3xl font-black text-slate-800">98%</div>
+                            <div className="text-3xl font-black text-slate-800">{assignmentProgress}%</div>
                             <div className="text-xs font-medium text-slate-500">of active students assigned a structure</div>
                           </div>
                           <div className="text-right">
-                            <div className="text-sm font-bold text-slate-700">1,248 / 1,270</div>
+                            <div className="text-sm font-bold text-slate-700">{assignedStudents} / {totalStudents}</div>
                             <div className="text-[10px] font-bold text-slate-400 uppercase">Students</div>
                           </div>
                         </div>
                         <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-emerald-500 rounded-full" style={{ width: '98%' }} />
+                          <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${assignmentProgress}%` }} />
                         </div>
                       </div>
                   </div>
@@ -344,22 +417,26 @@ export default function FeeManagementCenter({
                       <PieChartIcon className="w-4 h-4 text-indigo-500" /> Category Distribution
                     </h3>
                     <div className="h-32 w-full mt-4">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={pieData}
-                            innerRadius={30}
-                            outerRadius={50}
-                            paddingAngle={5}
-                            dataKey="value"
-                          >
-                            {pieData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }} />
-                        </PieChart>
-                      </ResponsiveContainer>
+                      {pieData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={pieData}
+                              innerRadius={30}
+                              outerRadius={50}
+                              paddingAngle={5}
+                              dataKey="value"
+                            >
+                              {pieData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="h-full flex items-center justify-center text-slate-400 text-xs font-semibold text-center">No categories mapped.</div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -554,7 +631,7 @@ export default function FeeManagementCenter({
                    </div>
                    <div>
                      <h4 className="text-base font-black text-slate-800">2025-2026</h4>
-                     <p className="text-xs font-bold text-slate-500 mt-0.5">Currently Active • 1,248 Students Enrolled</p>
+                     <p className="text-xs font-bold text-slate-500 mt-0.5">Currently Active • {students?.length || 0} Students Enrolled</p>
                    </div>
                  </div>
                  <span className="px-3 py-1 bg-brand-primary text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-sm">

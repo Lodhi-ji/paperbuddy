@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import prisma from '../db.js';
 import { JWT_SECRET, JWT_REFRESH_SECRET, PRIMARY_FRONTEND_URL } from '../config.js';
 import { isValidEmail, getPasswordError } from '../utils/validators.js';
+import { sendPasswordResetEmail } from '../utils/email.js';
 
 // A precomputed bcrypt hash with no known matching plaintext. Used to run a
 // "dummy" compare when a user/email isn't found, so that login takes roughly
@@ -275,7 +276,9 @@ export async function forgotPassword(req, res) {
     // Build reset URL
     const resetUrl = `${PRIMARY_FRONTEND_URL}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
 
-    // TODO: send resetUrl via email (e.g. nodemailer/SES/SendGrid) instead of logging it.
+    // Send the reset URL via Nodemailer
+    sendPasswordResetEmail(user.email, resetUrl).catch(console.error);
+
     console.log(`\n========================================`);
     console.log(`PASSWORD RESET REQUESTED FOR: ${user.email}`);
     console.log(`Reset Link: ${resetUrl}`);

@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import xlsx from 'xlsx';
 import prisma from '../db.js';
 import { isValidEmail, generateTempPassword } from '../utils/validators.js';
+import { sendStudentWelcomeEmail } from '../utils/email.js';
 
 // Helper function to auto-assign active fee structures to a student
 async function autoAssignFeesForStudent(tx, studentId, className, schoolId) {
@@ -281,10 +282,13 @@ export async function getFeeStructures(req, res) {
 // ----------------------------------------------------
 
 export async function createStudent(req, res) {
-  const { name, email, password, phone, rollNumber, class: className, section, guardianName, guardianPhone, photoUrl } = req.body;
+  const { 
+    name, email, phone, rollNumber, class: className, section, guardianName, guardianPhone, photoUrl,
+    dateOfBirth, gender, bloodGroup, address, previousSchool, extracurricular, guardianEmail, emergencyContact
+  } = req.body;
   const schoolId = req.schoolId;
 
-  if (!name || !email || !password || !rollNumber || !className || !section || !guardianName || !guardianPhone) {
+  if (!name || !email || !rollNumber || !className || !section || !guardianName || !guardianPhone) {
     return res.status(400).json({ error: 'Required fields missing' });
   }
 
@@ -301,7 +305,8 @@ export async function createStudent(req, res) {
       return res.status(400).json({ error: 'Student with this roll number already exists in this school' });
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const tempPassword = '111111';
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
 
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -325,6 +330,14 @@ export async function createStudent(req, res) {
           section,
           guardianName,
           guardianPhone,
+          guardianEmail,
+          emergencyContact,
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+          gender,
+          bloodGroup,
+          address,
+          previousSchool,
+          extracurricular,
           photoUrl,
         },
       });
@@ -335,8 +348,11 @@ export async function createStudent(req, res) {
       return { user, student };
     });
 
+    // Send email using Resend in background
+    sendStudentWelcomeEmail(email, name, tempPassword).catch(console.error);
+
     return res.status(201).json({
-      message: 'Student registered successfully, fees auto-assigned',
+      message: 'Student registered successfully, fees auto-assigned. Email sent.',
       student: result.student,
     });
   } catch (error) {
@@ -418,6 +434,14 @@ export async function bulkUploadStudents(req, res) {
         GuardianName,
         GuardianPhone,
         Phone,
+        DateOfBirth,
+        Gender,
+        BloodGroup,
+        Address,
+        PreviousSchool,
+        Extracurricular,
+        GuardianEmail,
+        EmergencyContact,
       } = row;
 
       const rowNum = index + 2; // excel row offset (header is row 1)
@@ -435,7 +459,7 @@ export async function bulkUploadStudents(req, res) {
       }
 
       try {
-        const tempPassword = generateTempPassword();
+        const tempPassword = '111111';
         const passwordHash = await bcrypt.hash(tempPassword, 10);
 
         await prisma.$transaction(async (tx) => {
@@ -476,6 +500,14 @@ export async function bulkUploadStudents(req, res) {
               section: String(Section).trim(),
               guardianName: String(GuardianName).trim(),
               guardianPhone: String(GuardianPhone).trim(),
+              guardianEmail: GuardianEmail ? String(GuardianEmail).trim() : null,
+              emergencyContact: EmergencyContact ? String(EmergencyContact).trim() : null,
+              dateOfBirth: DateOfBirth ? new Date(DateOfBirth) : null,
+              gender: Gender ? String(Gender).trim() : null,
+              bloodGroup: BloodGroup ? String(BloodGroup).trim() : null,
+              address: Address ? String(Address).trim() : null,
+              previousSchool: PreviousSchool ? String(PreviousSchool).trim() : null,
+              extracurricular: Extracurricular ? String(Extracurricular).trim() : null,
             },
           });
 
@@ -489,6 +521,10 @@ export async function bulkUploadStudents(req, res) {
           rollNumber: String(RollNumber).trim(),
           tempPassword,
         });
+
+        // Send email in background
+        sendStudentWelcomeEmail(String(Email).trim(), String(Name).trim(), tempPassword).catch(console.error);
+
       } catch (err) {
         summary.failed++;
         summary.errors.push(`Row ${rowNum}: ${err.message}`);

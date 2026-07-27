@@ -22,7 +22,14 @@ import {
   MessageSquare,
   HelpCircle,
   BookOpen,
-  ArrowRight
+  ArrowRight,
+  ArrowLeft,
+  Mail,
+  School,
+  Smartphone,
+  Landmark,
+  Wallet,
+  Banknote
 } from 'lucide-react';
 
 export default function StudentDashboard() {
@@ -295,7 +302,7 @@ export default function StudentDashboard() {
             {/* Greeting Header */}
             <div>
               <h2 className="text-lg font-bold text-[#111827] tracking-tight">
-                👋 Good Morning, {user?.name || 'Rohan'}
+                <span className="flex items-center gap-2">Good Morning, {user?.name || 'Student'}</span>
               </h2>
             </div>
 
@@ -325,7 +332,7 @@ export default function StudentDashboard() {
                   </button>
                 ) : (
                   <span className="text-xs text-[#10B981] font-bold uppercase tracking-wider">
-                    ✓ All Dues Paid
+                    <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> All Dues Paid</span>
                   </span>
                 )}
               </div>
@@ -334,7 +341,7 @@ export default function StudentDashboard() {
             {/* Wallet Metric Cards (Three columns - Clean styling) */}
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-white p-5 rounded-xl border border-[#E5E7EB] shadow-sm flex flex-col justify-between min-h-[100px]">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">📄 Receipts</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5"><FileText className="w-3 h-3" /> Receipts</span>
                 <span className="text-sm font-extrabold text-[#111827] mt-1.5">
                   {transactions?.length || 0} Available
                 </span>
@@ -342,7 +349,7 @@ export default function StudentDashboard() {
               </div>
 
               <div className="bg-white p-5 rounded-xl border border-[#E5E7EB] shadow-sm flex flex-col justify-between min-h-[100px]">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">⚡ Waivers</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5"><Banknote className="w-3 h-3" /> Waivers</span>
                 <span className="text-sm font-extrabold text-[#111827] mt-1.5">
                   {formatCurrency(calculations.waiversTotal)}
                 </span>
@@ -350,7 +357,7 @@ export default function StudentDashboard() {
               </div>
 
               <div className="bg-white p-5 rounded-xl border border-[#E5E7EB] shadow-sm flex flex-col justify-between min-h-[100px]">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">📅 Upcoming</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5"><Calendar className="w-3 h-3" /> Upcoming</span>
                 <span className="text-sm font-extrabold text-[#111827] mt-1.5">
                   {calculations.activeInvoicesCount} Fees
                 </span>
@@ -378,7 +385,7 @@ export default function StudentDashboard() {
                         className="bg-white rounded-xl p-4 border border-[#E5E7EB] shadow-sm flex justify-between items-center hover:border-slate-300 transition-colors"
                       >
                         <div className="space-y-1">
-                          <div className="text-xs text-[#111827] font-semibold">📘 {fee.feeStructure?.feeType?.name}</div>
+                          <div className="text-xs text-[#111827] font-semibold flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5 text-[#5B5CEB]" /> {fee.feeStructure?.feeType?.name}</div>
                           <div className="text-[10px] text-slate-450 text-slate-400 font-medium">Due {new Date(fee.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</div>
                         </div>
                         <div className="flex items-center gap-6">
@@ -388,7 +395,7 @@ export default function StudentDashboard() {
                               onClick={() => handleStartPayment(fee)}
                               className="text-xs font-bold text-[#5B5CEB] hover:text-[#4a4bd1] transition-colors flex items-center gap-1"
                             >
-                              Pay →
+                              Pay <ArrowRight className="w-3 h-3 ml-1" />
                             </button>
                           ) : (
                             <span className="text-xs text-[#10B981] font-bold">Paid</span>
@@ -416,7 +423,7 @@ export default function StudentDashboard() {
                       className="bg-white rounded-xl p-4 border border-[#E5E7EB] shadow-sm flex justify-between items-center"
                     >
                       <div className="space-y-0.5">
-                        <div className="text-xs font-semibold text-[#111827]">✓ {tx.studentFee?.feeStructure?.feeType?.name || 'School Fee'} Paid</div>
+                        <div className="text-xs font-semibold text-[#111827] flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> {tx.studentFee?.feeStructure?.feeType?.name || 'School Fee'} Paid</div>
                         <div className="text-[9px] text-slate-400 font-medium">Paid on {new Date(tx.createdAt).toLocaleDateString()}</div>
                       </div>
                       <div className="flex items-center gap-4">
@@ -484,7 +491,7 @@ export default function StudentDashboard() {
                       <div className="space-y-1">
                         <h4 className="font-bold text-sm text-[#111827]">{fee.feeStructure?.feeType?.name}</h4>
                         <div className="text-[10px] text-slate-450 text-slate-405 text-slate-500 font-semibold">
-                          Due Date: {new Date(fee.dueDate).toLocaleDateString()} • Base: {formatCurrency(due)}
+                          Due Date: {new Date(fee.dueDate).toLocaleDateString()} | Base: {formatCurrency(due)}
                         </div>
                       </div>
                       <div className="flex items-center gap-6">
@@ -573,53 +580,54 @@ export default function StudentDashboard() {
         {activeTab === 'profile' && (
           <div className="space-y-6">
             
-            {/* Scorecard Profile */}
-            <div className="bg-white rounded-xl p-5 border border-[#E5E7EB] shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-[#5B5CEB]" />
+            {/* Real Data Profile Card */}
+            <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm relative overflow-hidden transition-all hover:shadow-md">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-primary to-brand-accent" />
               
-              <div className="flex items-center gap-4 mt-4 pb-6 border-b border-slate-100">
-                <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-lg border border-indigo-100 shrink-0">
-                  👤
+              <div className="flex items-center gap-5 mt-2 pb-6 border-b border-slate-100">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-primary to-brand-accent text-white flex items-center justify-center font-black text-2xl shadow-inner shrink-0">
+                  {user?.name ? user.name.slice(0, 2).toUpperCase() : '👤'}
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-[#111827] leading-tight">{user?.name || 'Rohan Sharma'}</h2>
-                  <p className="text-[9px] font-bold text-slate-450 text-slate-400 uppercase tracking-wider mt-0.5">{user?.email || 'rohan@greenwood.edu'}</p>
+                  <h2 className="text-xl font-bold text-slate-800 leading-tight">{user?.name}</h2>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 flex items-center gap-1.5">
+                    <Mail className="w-3 h-3" />
+                    {user?.email}
+                  </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-x-6 gap-y-4 mt-5 text-left">
-                <div>
-                  <span className="text-[8px] text-slate-405 text-slate-400 font-bold uppercase tracking-wider block">Class Grade</span>
-                  <span className="text-xs font-bold text-[#111827] mt-0.5">Class 10-A</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mt-6 text-left">
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <School className="w-4 h-4 text-brand-primary" />
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Institution</span>
+                  </div>
+                  <span className="text-sm font-bold text-slate-800">{user?.schoolName}</span>
                 </div>
-                <div>
-                  <span className="text-[8px] text-slate-405 text-slate-400 font-bold uppercase tracking-wider block">Attendance Rate</span>
-                  <span className="text-xs font-bold text-[#10B981] mt-0.5">94% (Excellent)</span>
+                
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <ShieldCheck className="w-4 h-4 text-brand-primary" />
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Account Access</span>
+                  </div>
+                  <span className="text-sm font-bold text-brand-primary">{user?.role?.replace('_', ' ')}</span>
                 </div>
-                <div>
-                  <span className="text-[8px] text-slate-405 text-slate-400 font-bold uppercase tracking-wider block">Fee Status</span>
-                  <span className="text-xs font-bold text-[#5B5CEB] mt-0.5">Excellent standing</span>
-                </div>
-                <div>
-                  <span className="text-[8px] text-slate-405 text-slate-400 font-bold uppercase tracking-wider block">Academic Rank</span>
-                  <span className="text-xs font-bold text-[#111827] mt-0.5">#4 in Class</span>
-                </div>
-                <div className="col-span-2 pt-2 border-t border-slate-100">
-                  <span className="text-[8px] text-slate-405 text-slate-400 font-bold uppercase tracking-wider block">Guardian Info</span>
-                  <span className="text-xs font-bold text-slate-700 mt-0.5">Rajesh Sharma (Father)</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Achievements */}
-            <div className="bg-white rounded-xl p-5 border border-[#E5E7EB] shadow-sm space-y-3">
-              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Scholarships & Achievements</h3>
-              
-              <div className="flex gap-3 items-center p-3 bg-slate-50 rounded-lg border border-[#E5E7EB]">
-                <span className="text-base">🏆</span>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-800">Sports Merit Scholarship</h4>
-                  <p className="text-[10px] text-slate-505 text-slate-500 font-semibold mt-0.5">15% Waiver applied automatically to transport invoices.</p>
+                <div className="p-4 rounded-xl bg-rose-50 border border-rose-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <AlertCircle className="w-4 h-4 text-rose-500" />
+                    <span className="text-[10px] text-rose-600 font-bold uppercase tracking-wider">Outstanding Dues</span>
+                  </div>
+                  <span className="text-sm font-bold text-rose-600">{formatCurrency(calculations.outstanding)}</span>
+                </div>
+
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <FileText className="w-4 h-4 text-amber-500" />
+                    <span className="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Pending Invoices</span>
+                  </div>
+                  <span className="text-sm font-bold text-amber-600">{calculations.activeInvoicesCount} Active Bills</span>
                 </div>
               </div>
             </div>
@@ -727,11 +735,11 @@ export default function StudentDashboard() {
                       <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Payment Method</span>
                       <div className="flex flex-wrap gap-2">
                         {[
-                          { k: 'UPI', icon: '📱', label: 'UPI' },
-                          { k: 'CARD', icon: '💳', label: 'Card' },
-                          { k: 'NETBANKING', icon: '🏦', label: 'Net Banking' },
-                          { k: 'WALLET', icon: '👛', label: 'Wallet' }
-                        ].map(method => (
+                          { k: 'UPI', icon: <Smartphone className="w-4 h-4" />, label: 'UPI' },
+                          { k: 'CARD', icon: <CreditCard className="w-4 h-4" />, label: 'Card' },
+                          { k: 'NETBANKING', icon: <Landmark className="w-4 h-4" />, label: 'Net Banking' },
+                          { k: 'WALLET', icon: <Wallet className="w-4 h-4" />, label: 'Wallet' }
+                        ].map((method) => (
                           <button
                             key={method.k}
                             type="button"
@@ -754,7 +762,7 @@ export default function StudentDashboard() {
                     onClick={() => setCheckoutStep('details')}
                     className="w-full bg-[#5B5CEB] hover:bg-[#4a4bd1] text-white py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all shadow-sm mt-4"
                   >
-                    Continue →
+                    Continue <ArrowRight className="w-4 h-4 ml-1" />
                   </button>
                 </div>
               )}
@@ -768,7 +776,7 @@ export default function StudentDashboard() {
                     onClick={() => setCheckoutStep('summary')}
                     className="text-[10px] font-bold text-slate-400 uppercase tracking-wider hover:text-slate-600 transition-colors w-fit"
                   >
-                    ← Back to Summary
+                    <ArrowLeft className="w-4 h-4 mr-1" /> Back to Summary
                   </button>
 
                   <div className="space-y-4 flex-1">
@@ -831,7 +839,7 @@ export default function StudentDashboard() {
                             <div className="card-front bg-gradient-to-br from-slate-900 to-indigo-950 rounded-xl p-4 text-white flex flex-col justify-between shadow-md border border-white/10 overflow-hidden">
                               <div className="flex justify-between items-start">
                                 <span className="text-[8px] font-bold tracking-wider text-indigo-300">CampusPay Visa</span>
-                                <div className="w-6 h-4 bg-yellow-400 rounded" />
+                                <CreditCard className="w-6 h-4 text-yellow-400" />
                               </div>
                               
                               <div className="text-sm font-mono tracking-widest text-center py-2">
@@ -978,7 +986,7 @@ export default function StudentDashboard() {
                   </div>
 
                   <div className="space-y-1">
-                    <h3 className="text-base font-bold text-[#111827] tracking-tight">✓ Payment Successful</h3>
+                    <h3 className="text-base font-bold text-[#111827] tracking-tight flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-500" /> Payment Successful</h3>
                     <div className="text-2xl font-black text-[#111827] font-mono tracking-tight mt-1">
                       {createdTxn ? formatCurrency(Number(createdTxn.amount)) : ''}
                     </div>
@@ -996,7 +1004,7 @@ export default function StudentDashboard() {
                       </div>
                       <div className="flex justify-between">
                         <span>Receipt Copy</span>
-                        <span className="text-[#10B981]">Generated ✓</span>
+                        <span className="text-[#10B981] flex items-center gap-1">Generated <CheckCircle2 className="w-3 h-3" /></span>
                       </div>
                     </div>
                   )}

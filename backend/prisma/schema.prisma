@@ -96,7 +96,15 @@ model Student {
   section       String   // e.g. "A", "B"
   guardianName  String
   guardianPhone String
+  guardianEmail String?
+  emergencyContact String?
   admissionDate DateTime @default(now())
+  dateOfBirth   DateTime?
+  gender        String?
+  bloodGroup    String?
+  address       String?
+  previousSchool String?
+  extracurricular String?
   photoUrl      String?
 
   // Relations

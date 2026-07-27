@@ -142,6 +142,18 @@ export default function AccountantDashboard() {
     },
   });
 
+  const reconcileChequeMutation = useMutation({
+    mutationFn: ({ id, status }) => api.patch(`/accountant/transactions/${id}/reconcile`, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accountantMetrics'] });
+      queryClient.invalidateQueries({ queryKey: ['accountantRecentTransactions'] });
+      queryClient.invalidateQueries({ queryKey: ['accountantFeesQueue'] });
+    },
+    onError: (err) => {
+      alert(err.response?.data?.error || err.message || 'Cheque reconciliation failed');
+    }
+  });
+
   // ----------------------------------------------------
   // HANDLERS & HELPERS
   // ----------------------------------------------------
@@ -252,10 +264,10 @@ export default function AccountantDashboard() {
   const todayTransactions = transactions?.filter(t => new Date(t.createdAt).toDateString() === new Date().toDateString()) || [];
   const completedTodayCount = todayTransactions.filter(t => t.status === 'SUCCESS').length;
   
-  // Fake total pending metrics for the hero
-  const totalPendingAmount = 154200; 
-  const totalPendingStudents = 34;
-  const progressPercent = Math.min(100, (completedTodayCount / totalPendingStudents) * 100);
+  // Dynamic pending metrics for the hero
+  const totalPendingAmount = metrics?.totalPending ?? 0;
+  const totalPendingStudents = metrics?.defaultersCount ?? 0;
+  const progressPercent = totalPendingStudents ? Math.min(100, (completedTodayCount / totalPendingStudents) * 100) : 0;
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-[#F8FAFC] min-h-screen">
@@ -316,11 +328,11 @@ export default function AccountantDashboard() {
         <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4 ml-2">Today's Work</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
-            { label: 'Cash Payments', count: 12, color: 'text-emerald-700', bg: 'bg-emerald-100', border: 'border-emerald-200' },
-            { label: 'Pending Cheques', count: pendingChequesCount || 7, color: 'text-amber-700', bg: 'bg-amber-100', border: 'border-amber-200' },
-            { label: 'Fee Adjustments', count: 5, color: 'text-blue-700', bg: 'bg-blue-100', border: 'border-blue-200' },
-            { label: 'Overdue Accounts', count: metrics?.defaultersCount || 3, color: 'text-rose-700', bg: 'bg-rose-100', border: 'border-rose-200' },
-            { label: 'Refund Requests', count: 2, color: 'text-purple-700', bg: 'bg-purple-100', border: 'border-purple-200' },
+            { label: 'Cash Payments', count: todayTransactions.filter(t => t.method === 'CASH').length, color: 'text-emerald-700', bg: 'bg-emerald-100', border: 'border-emerald-200' },
+            { label: 'Pending Cheques', count: pendingChequesCount, color: 'text-amber-700', bg: 'bg-amber-100', border: 'border-amber-200' },
+            { label: 'Fee Adjustments', count: feesQueue?.filter(f => Number(f.waiverAmount) > 0 || Number(f.penaltyAmount) > 0).length || 0, color: 'text-blue-700', bg: 'bg-blue-100', border: 'border-blue-200' },
+            { label: 'Overdue Accounts', count: metrics?.defaultersCount ?? 0, color: 'text-rose-700', bg: 'bg-rose-100', border: 'border-rose-200' },
+            { label: 'Refund Requests', count: 0, color: 'text-purple-700', bg: 'bg-purple-100', border: 'border-purple-200' },
           ].map((queue, idx) => (
             <button key={idx} className={`p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between h-24 hover:border-slate-400 hover:shadow-md transition-all group active:scale-95`}>
               <span className={`text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-800 transition-colors text-left`}>{queue.label}</span>
@@ -553,34 +565,40 @@ export default function AccountantDashboard() {
             <h3 className="text-xs font-black uppercase tracking-widest text-rose-600 mb-5 border-b border-rose-100 pb-2">Action Required</h3>
             
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-[10px] font-black uppercase text-rose-500 tracking-wider">Bounce Cheque</p>
-                  <p className="text-sm font-bold text-slate-800">Rohan Sharma</p>
-                  <p className="text-xs font-mono text-slate-500">₹1,000</p>
+              {metrics?.pendingCheques && metrics.pendingCheques.length > 0 ? (
+                metrics.pendingCheques.map((chq, idx) => (
+                  <React.Fragment key={chq.id}>
+                    {idx > 0 && <div className="w-full h-px bg-slate-100" />}
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-rose-500 tracking-wider">Cheque Clearance Required</p>
+                        <p className="text-sm font-bold text-slate-800">{chq.studentName}</p>
+                        <p className="text-xs font-mono text-slate-500">{formatCurrency(chq.amount)} • Cheque #{chq.chequeNumber}</p>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <button 
+                          onClick={() => reconcileChequeMutation.mutate({ id: chq.id, status: 'CLEARED' })}
+                          disabled={reconcileChequeMutation.isPending}
+                          className="text-xs font-black bg-emerald-50 text-emerald-600 px-2.5 py-1.5 rounded-lg hover:bg-emerald-600 hover:text-white transition-colors disabled:opacity-50"
+                        >
+                          Clear
+                        </button>
+                        <button 
+                          onClick={() => reconcileChequeMutation.mutate({ id: chq.id, status: 'BOUNCED' })}
+                          disabled={reconcileChequeMutation.isPending}
+                          className="text-xs font-black bg-rose-50 text-rose-600 px-2.5 py-1.5 rounded-lg hover:bg-rose-600 hover:text-white transition-colors disabled:opacity-50"
+                        >
+                          Bounce
+                        </button>
+                      </div>
+                    </div>
+                  </React.Fragment>
+                ))
+              ) : (
+                <div className="py-8 text-center text-slate-400 text-xs font-semibold">
+                  All caught up! No pending cheque verifications required.
                 </div>
-                <button className="text-xs font-bold bg-rose-50 text-rose-600 px-3 py-1.5 rounded-lg hover:bg-rose-600 hover:text-white transition-colors">Open →</button>
-              </div>
-              <div className="w-full h-px bg-slate-100" />
-              
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-[10px] font-black uppercase text-amber-500 tracking-wider">Fee Waiver Request</p>
-                  <p className="text-sm font-bold text-slate-800">Emily Chen</p>
-                  <p className="text-xs font-mono text-slate-500">₹800</p>
-                </div>
-                <button className="text-xs font-bold bg-amber-50 text-amber-600 px-3 py-1.5 rounded-lg hover:bg-amber-500 hover:text-white transition-colors">Approve →</button>
-              </div>
-              <div className="w-full h-px bg-slate-100" />
-
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-[10px] font-black uppercase text-purple-500 tracking-wider">Refund Pending</p>
-                  <p className="text-sm font-bold text-slate-800">Kabir Mehta</p>
-                  <p className="text-xs font-mono text-slate-500">₹1,200</p>
-                </div>
-                <button className="text-xs font-bold bg-purple-50 text-purple-600 px-3 py-1.5 rounded-lg hover:bg-purple-600 hover:text-white transition-colors">Review →</button>
-              </div>
+              )}
             </div>
           </div>
 

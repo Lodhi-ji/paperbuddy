@@ -93,14 +93,71 @@ export default function TransactionCenter({
     setExpandedRow(expandedRow === id ? null : id);
   };
 
-  // Mock Timeline Data
-  const timelineData = [
-    { time: '08:10', icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />, text: 'UPI Received', amount: '₹2,500' },
-    { time: '09:14', icon: <CreditCard className="w-3.5 h-3.5 text-blue-500" />, text: 'Card Payment', amount: '₹8,000' },
-    { time: '10:22', icon: <Clock className="w-3.5 h-3.5 text-amber-500" />, text: 'Cheque Pending', amount: '' },
-    { time: '11:30', icon: <Banknote className="w-3.5 h-3.5 text-emerald-500" />, text: 'Cash Collected', amount: '₹4,500' },
-    { time: '12:45', icon: <RotateCcw className="w-3.5 h-3.5 text-slate-400" />, text: 'Refund Processed', amount: '₹1,200' },
-  ];
+  // Dynamic Timeline Data from the real transactions list
+  const timelineData = React.useMemo(() => {
+    if (!transactions) return [];
+    
+    // Sort transactions by date descending, take top 5
+    const latestTxns = [...transactions]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 5);
+
+    return latestTxns.map(t => {
+      const date = new Date(t.createdAt);
+      const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      
+      let text = `${getMethodLabel(t.method)} Received`;
+      if (t.status === 'PENDING') text = `${getMethodLabel(t.method)} Pending`;
+      if (t.status === 'FAILED' || t.status === 'BOUNCED') text = `${getMethodLabel(t.method)} Bounced/Failed`;
+      
+      let icon = <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />;
+      if (t.status === 'PENDING') icon = <Clock className="w-3.5 h-3.5 text-amber-500" />;
+      if (t.status === 'FAILED' || t.status === 'BOUNCED') icon = <XCircle className="w-3.5 h-3.5 text-rose-500" />;
+
+      return {
+        time: timeStr,
+        icon,
+        text,
+        amount: formatCurrency(Number(t.amount))
+      };
+    });
+  }, [transactions]);
+
+  // Dynamic KPI calculations
+  const calculations = React.useMemo(() => {
+    let todayCollected = 0;
+    let pendingCount = 0;
+    let failedCount = 0;
+    let successCount = 0;
+
+    const todayStr = new Date().toDateString();
+
+    transactions?.forEach(t => {
+      const amt = Number(t.amount) || 0;
+      const isToday = new Date(t.createdAt).toDateString() === todayStr;
+
+      if (t.status === 'SUCCESS' || t.status === 'CLEARED') {
+        successCount++;
+        if (isToday) {
+          todayCollected += amt;
+        }
+      } else if (t.status === 'PENDING') {
+        pendingCount++;
+      } else if (t.status === 'FAILED' || t.status === 'BOUNCED') {
+        failedCount++;
+      }
+    });
+
+    const totalCount = successCount + failedCount;
+    const successRate = totalCount ? Math.round((successCount / totalCount) * 1000) / 10 : 0;
+
+    return {
+      todayCollected,
+      pendingCount,
+      failedCount,
+      successRate
+    };
+  }, [transactions]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -108,16 +165,20 @@ export default function TransactionCenter({
       {/* Financial Timeline (Top Bar) */}
       <div className="glass-card rounded-[20px] p-3 border border-white/40 shadow-sm flex items-center overflow-x-auto no-scrollbar gap-6">
         <div className="text-[10px] font-black uppercase tracking-widest text-brand-primary px-3 border-r border-slate-200 shrink-0">Live Feed</div>
-        {timelineData.map((item, idx) => (
-          <div key={idx} className="flex items-center gap-2 shrink-0 text-xs">
-            <span className="font-mono font-bold text-slate-400">{item.time}</span>
-            <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
-              {item.icon}
-              <span className="font-bold text-slate-600">{item.text}</span>
-              {item.amount && <span className="font-black text-slate-800 ml-1">{item.amount}</span>}
+        {timelineData.length > 0 ? (
+          timelineData.map((item, idx) => (
+            <div key={idx} className="flex items-center gap-2 shrink-0 text-xs">
+              <span className="font-mono font-bold text-slate-400">{item.time}</span>
+              <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
+                {item.icon}
+                <span className="font-bold text-slate-600">{item.text}</span>
+                {item.amount && <span className="font-black text-slate-800 ml-1">{item.amount}</span>}
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        ) : (
+          <div className="text-xs font-semibold text-slate-400">No transaction activity recorded yet.</div>
+        )}
       </div>
 
       {/* Header */}
@@ -145,19 +206,19 @@ export default function TransactionCenter({
         <div className="glass-card rounded-[20px] p-5 border border-white/40 shadow-sm md:col-span-2 relative overflow-hidden">
           <div className="absolute right-0 top-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -mr-10 -mt-10" />
           <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Today's Collection</h3>
-          <div className="text-3xl font-black text-emerald-600">₹2,48,000</div>
+          <div className="text-3xl font-black text-emerald-600">{formatCurrency(calculations.todayCollected)}</div>
         </div>
         <div className="glass-card rounded-[20px] p-5 border border-white/40 shadow-sm relative overflow-hidden">
           <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Pending</h3>
-          <div className="text-3xl font-black text-amber-500">18</div>
+          <div className="text-3xl font-black text-amber-500">{calculations.pendingCount}</div>
         </div>
         <div className="glass-card rounded-[20px] p-5 border border-white/40 shadow-sm relative overflow-hidden">
           <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Failed</h3>
-          <div className="text-3xl font-black text-rose-500">4</div>
+          <div className="text-3xl font-black text-rose-500">{calculations.failedCount}</div>
         </div>
         <div className="glass-card rounded-[20px] p-5 border border-white/40 shadow-sm relative overflow-hidden">
           <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Success Rate</h3>
-          <div className="text-3xl font-black text-slate-800">98.4%</div>
+          <div className="text-3xl font-black text-slate-800">{calculations.successRate}%</div>
         </div>
       </div>
 

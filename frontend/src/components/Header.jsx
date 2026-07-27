@@ -1,11 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { Search, Bell, Moon, Sun, User, Lock, KeyRound, Loader2, X, Eye, EyeOff } from 'lucide-react';
+import { Search, Bell, Moon, Sun, User, Lock, KeyRound, Loader2, X, Eye, EyeOff, LogOut } from 'lucide-react';
 import { api } from '../api';
 
 export default function Header() {
   const { user, logout } = useAuthStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+  
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -90,27 +105,48 @@ export default function Header() {
         <div className="h-8 w-px bg-slate-200 mx-1" />
 
         {/* Profile */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 relative" ref={dropdownRef}>
           <div className="text-right hidden sm:block">
             <p className="text-xs font-bold text-slate-800">{user?.name}</p>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{user?.role?.replace('_', ' ')}</p>
           </div>
+          
           <button 
-            onClick={() => setIsModalOpen(true)}
-            className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-primary to-brand-accent shadow-md flex items-center justify-center text-white font-bold text-sm transform hover:scale-105 transition-transform"
-            title="Account Settings"
+            onClick={() => setShowDropdown(!showDropdown)}
+            className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-primary to-brand-accent shadow-md flex items-center justify-center text-white font-bold text-sm transform hover:scale-105 transition-transform relative"
+            title="Profile Menu"
           >
             {user?.name ? user.name.slice(0, 2).toUpperCase() : <User className="w-5 h-5" />}
           </button>
 
-          {/* Logout / Exit Cross Button */}
-          <button 
-            onClick={logout}
-            className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 hover:text-rose-500 hover:border-rose-300 hover:bg-rose-50/30 transition-all"
-            title="Logout / Exit"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          {/* Profile Dropdown Menu */}
+          {showDropdown && (
+            <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+              <button
+                onClick={() => {
+                  setShowDropdown(false);
+                  setIsModalOpen(true);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-brand-primary transition-colors text-left"
+              >
+                <Lock className="w-4 h-4" />
+                <span className="font-medium">Change Password</span>
+              </button>
+              
+              <div className="h-px bg-slate-100 my-1 mx-2" />
+              
+              <button
+                onClick={() => {
+                  setShowDropdown(false);
+                  logout();
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-rose-500 hover:bg-rose-50 transition-colors text-left"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="font-medium">Logout</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

@@ -76,7 +76,7 @@ export default function StudentProfile360({ student, onClose }) {
     });
   }
 
-  const healthScore = totalOutstanding === 0 ? 98 : 75;
+  const healthScore = totalBilled > 0 ? Math.round(((totalBilled - totalOutstanding) / totalBilled) * 100) : null;
 
   return (
     <div className="absolute inset-0 bg-slate-50/95 backdrop-blur-xl z-[50] overflow-y-auto no-scrollbar animate-in slide-in-from-right-8 duration-300">
@@ -137,16 +137,18 @@ export default function StudentProfile360({ student, onClose }) {
                 </h3>
                 
                 <div className="flex items-end gap-3 mb-4">
-                  <div className="text-4xl font-black text-slate-800">{healthScore}%</div>
-                  <div className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md mb-1">
-                    {healthScore > 90 ? 'Excellent' : 'Healthy'}
-                  </div>
+                  <div className="text-4xl font-black text-slate-800">{healthScore !== null ? `${healthScore}%` : 'N/A'}</div>
+                  {healthScore !== null && (
+                    <div className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md mb-1">
+                      {healthScore > 90 ? 'Excellent' : 'Healthy'}
+                    </div>
+                  )}
                 </div>
                 
                 <div className="space-y-2 text-xs font-bold text-slate-500 relative z-10">
                   <div className="flex justify-between items-center">
                     <span>Attendance</span>
-                    <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> 92%</span>
+                    <span className="text-slate-400 flex items-center gap-1">Not Recorded</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span>Fee Status</span>
@@ -158,11 +160,11 @@ export default function StudentProfile360({ student, onClose }) {
                   </div>
                   <div className="flex justify-between items-center">
                     <span>Academic</span>
-                    <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Good</span>
+                    <span className="text-slate-400 flex items-center gap-1">No Data</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span>Documents</span>
-                    <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Complete</span>
+                    <span className="text-slate-400 flex items-center gap-1">Pending</span>
                   </div>
                 </div>
               </div>
@@ -220,23 +222,23 @@ export default function StudentProfile360({ student, onClose }) {
                 <div className="space-y-5">
                   <div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Date of Birth</div>
-                    <div className="text-xs font-bold text-slate-700 flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-slate-400" /> 15 Aug 2010
+                    <div className={`text-xs font-bold flex items-center gap-2 ${student.dateOfBirth ? 'text-slate-700' : 'text-slate-400'}`}>
+                      <Calendar className={`w-4 h-4 ${student.dateOfBirth ? 'text-brand-primary' : 'text-slate-400'}`} /> {student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Not Specified'}
                     </div>
                   </div>
                   <div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Gender</div>
-                    <div className="text-xs font-bold text-slate-700">Male</div>
+                    <div className={`text-xs font-bold ${student.gender ? 'text-slate-700' : 'text-slate-400'}`}>{student.gender || 'Not Specified'}</div>
                   </div>
                   <div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Blood Group</div>
-                    <div className="text-xs font-bold text-slate-700">O+</div>
+                    <div className={`text-xs font-bold ${student.bloodGroup ? 'text-slate-700' : 'text-slate-400'}`}>{student.bloodGroup || 'Not Specified'}</div>
                   </div>
                   <div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Address</div>
-                    <div className="text-xs font-bold text-slate-700 flex items-start gap-2">
-                      <MapPin className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" /> 
-                      <span>123, Whitefield Main Road, Bangalore, Karnataka, 560066</span>
+                    <div className={`text-xs font-bold flex items-start gap-2 ${student.address ? 'text-slate-700' : 'text-slate-400'}`}>
+                      <MapPin className={`w-4 h-4 shrink-0 mt-0.5 ${student.address ? 'text-brand-primary' : 'text-slate-400'}`} /> 
+                      <span>{student.address || 'Not Specified'}</span>
                     </div>
                   </div>
                 </div>
@@ -253,22 +255,22 @@ export default function StudentProfile360({ student, onClose }) {
                 <div className="space-y-5">
                   <div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Admission Date</div>
-                    <div className="text-xs font-bold text-slate-700 flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-slate-400" /> 01 Apr 2024
+                    <div className="text-xs font-bold text-slate-400 flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-slate-400" /> Not Specified
                     </div>
                   </div>
                   <div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Admission Number</div>
-                    <div className="text-xs font-bold text-slate-700">ADM-2024-089</div>
+                    <div className="text-xs font-bold text-slate-700">{student.rollNumber}</div>
                   </div>
                   <div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Previous School</div>
-                    <div className="text-xs font-bold text-slate-700">St. Joseph's High School</div>
+                    <div className={`text-xs font-bold ${student.previousSchool ? 'text-slate-700' : 'text-slate-400'}`}>{student.previousSchool || 'Not Specified'}</div>
                   </div>
                   <div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Extracurricular</div>
-                    <div className="text-xs font-bold text-slate-700 flex items-center gap-2">
-                      <Award className="w-4 h-4 text-slate-400" /> Basketball Team, Debate Club
+                    <div className={`text-xs font-bold flex items-center gap-2 ${student.extracurricular ? 'text-slate-700' : 'text-slate-400'}`}>
+                      <Award className={`w-4 h-4 ${student.extracurricular ? 'text-brand-primary' : 'text-slate-400'}`} /> {student.extracurricular || 'None recorded'}
                     </div>
                   </div>
                 </div>
@@ -285,7 +287,7 @@ export default function StudentProfile360({ student, onClose }) {
                 <div className="space-y-5">
                   <div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Primary Guardian</div>
-                    <div className="text-xs font-bold text-slate-700">{student.guardianName} (Father)</div>
+                    <div className="text-xs font-bold text-slate-700">{student.guardianName}</div>
                   </div>
                   <div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Contact Number</div>
@@ -295,14 +297,14 @@ export default function StudentProfile360({ student, onClose }) {
                   </div>
                   <div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Email Address</div>
-                    <div className="text-xs font-bold text-slate-700 flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-slate-400" /> guardian@email.com
+                    <div className={`text-xs font-bold flex items-center gap-2 ${student.guardianEmail ? 'text-slate-700' : 'text-slate-400'}`}>
+                      <Mail className={`w-4 h-4 ${student.guardianEmail ? 'text-brand-primary' : 'text-slate-400'}`} /> {student.guardianEmail || 'Not Specified'}
                     </div>
                   </div>
                   <div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Emergency Contact</div>
-                    <div className="text-xs font-bold text-slate-700 flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-slate-400" /> +91 98765 00000 (Mother)
+                    <div className={`text-xs font-bold flex items-center gap-2 ${student.emergencyContact ? 'text-slate-700' : 'text-slate-400'}`}>
+                      <Phone className={`w-4 h-4 ${student.emergencyContact ? 'text-brand-primary' : 'text-slate-400'}`} /> {student.emergencyContact || 'Not Specified'}
                     </div>
                   </div>
                 </div>
@@ -350,8 +352,8 @@ export default function StudentProfile360({ student, onClose }) {
                     <div className="text-[10px] font-bold text-blue-600/70 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-blue-500" /> Last Payment
                     </div>
-                    <div className="text-sm font-bold text-blue-700 mt-2">12 Jun 2024</div>
-                    <div className="text-[10px] font-medium text-blue-500/80">{formatCurrency(15000)} via Card</div>
+                    <div className="text-sm font-bold text-slate-400 mt-2">No Payments Yet</div>
+                    <div className="text-[10px] font-medium text-slate-400/80">-</div>
                   </div>
                 </div>
               </div>
@@ -435,94 +437,24 @@ export default function StudentProfile360({ student, onClose }) {
 
           {/* ACADEMIC TAB (MOCK) */}
           {activeTab === 'academic' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 glass-card rounded-[24px] p-6 border border-white/40 shadow-sm space-y-6 bg-white/50">
-                <h3 className="text-xs font-black uppercase text-slate-800 tracking-wider flex items-center gap-2">
-                  <BarChart2 className="w-4 h-4 text-brand-primary" /> Performance Overview
-                </h3>
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={[
-                      { subject: 'Math', grade: 92 },
-                      { subject: 'Science', grade: 88 },
-                      { subject: 'English', grade: 95 },
-                      { subject: 'History', grade: 82 },
-                      { subject: 'Art', grade: 98 }
-                    ]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                      <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} dy={10} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} />
-                      <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                      <Bar dataKey="grade" fill="#8b5cf6" radius={[6, 6, 0, 0]} barSize={48} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              <div className="space-y-6">
-                <div className="glass-card rounded-[24px] p-6 border border-white/40 shadow-sm bg-white/50">
-                  <h3 className="text-xs font-black uppercase text-slate-800 tracking-wider mb-4 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-emerald-500" /> Overall CGPA
-                  </h3>
-                  <div className="flex items-end gap-2">
-                    <span className="text-5xl font-black text-slate-800 tracking-tighter">9.2</span>
-                    <span className="text-sm font-bold text-slate-400 mb-1.5">/ 10</span>
-                  </div>
-                  <div className="mt-4 text-xs text-slate-500 font-medium leading-relaxed">
-                    Student is performing exceptionally well in Sciences and Languages.
-                  </div>
-                </div>
-                <div className="glass-card rounded-[24px] p-6 border border-white/40 shadow-sm bg-white/50">
-                   <h3 className="text-xs font-black uppercase text-slate-800 tracking-wider mb-4 flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-blue-500" /> Teacher Remarks
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100/50 text-xs font-medium text-slate-600 italic">
-                      "Very attentive in class, consistently submits assignments on time and shows great leadership qualities."
-                      <div className="mt-2 text-[10px] font-bold text-blue-500 uppercase not-italic">- Mrs. Sharma (Class Teacher)</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+             <div className="glass-card rounded-[24px] p-8 border border-white/40 shadow-sm text-center py-32 bg-white/50">
+               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-100 shadow-inner">
+                 <BookOpen className="w-10 h-10 text-slate-300" />
+               </div>
+               <h3 className="text-lg font-black text-slate-700 mb-2">No Academic Records</h3>
+               <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">Academic records will appear here once examinations are graded and published.</p>
+             </div>
           )}
 
           {/* DOCUMENTS TAB (MOCK) */}
           {activeTab === 'documents' && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center bg-white/50 p-4 rounded-2xl border border-white/40 shadow-sm">
-                <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-indigo-500" /> Uploaded Documents
-                </h3>
-                <button className="bg-brand-primary text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-md hover:bg-brand-secondary hover:-translate-y-0.5 transition-all flex items-center gap-2">
-                  <UploadCloud className="w-4 h-4" /> Upload Document
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[
-                  { name: 'Admission Form', date: '01 Apr 2024', status: 'Verified', icon: FileText },
-                  { name: 'Birth Certificate', date: '01 Apr 2024', status: 'Verified', icon: BookOpen },
-                  { name: 'Aadhaar Card', date: '05 Apr 2024', status: 'Verified', icon: Shield },
-                  { name: 'Transfer Certificate', date: '12 Apr 2024', status: 'Verified', icon: FileText },
-                  { name: 'Previous Marksheet', date: '05 Apr 2024', status: 'Verified', icon: Award }
-                ].map((doc, idx) => (
-                  <div key={idx} className="glass-card rounded-2xl p-5 border border-white/40 shadow-sm flex items-center justify-between group hover:border-brand-primary/30 hover:shadow-md transition-all">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                        <doc.icon className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-bold text-slate-700">{doc.name}</div>
-                        <div className="text-[10px] text-slate-400 mt-1">Uploaded {doc.date}</div>
-                      </div>
-                    </div>
-                    <button className="w-10 h-10 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-brand-primary hover:text-white hover:shadow-md transition-all">
-                      <DownloadCloud className="w-5 h-5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+             <div className="glass-card rounded-[24px] p-8 border border-white/40 shadow-sm text-center py-32 bg-white/50">
+               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-100 shadow-inner">
+                 <FileText className="w-10 h-10 text-slate-300" />
+               </div>
+               <h3 className="text-lg font-black text-slate-700 mb-2">No Documents Uploaded</h3>
+               <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">There are currently no documents associated with this student's profile.</p>
+             </div>
           )}
 
           {/* ATTENDANCE TAB (MOCK) */}
@@ -549,44 +481,12 @@ export default function StudentProfile360({ student, onClose }) {
 
           {/* ACTIVITY LOG TAB (MOCK) */}
           {activeTab === 'activity' && (
-             <div className="glass-card rounded-[32px] p-8 md:p-12 border border-white/40 shadow-sm bg-white/50 max-w-3xl">
-               <h3 className="text-sm font-black uppercase text-slate-800 tracking-wider mb-10 flex items-center gap-2">
-                 <Clock className="w-5 h-5 text-indigo-500" /> Chronological Timeline
-               </h3>
-               <div className="space-y-8 pl-6 border-l-2 border-slate-100 relative">
-                  <div className="relative group">
-                    <div className="absolute -left-[33px] w-6 h-6 rounded-full bg-emerald-500 border-4 border-white shadow-sm group-hover:scale-125 transition-transform" />
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm ml-4">
-                      <div className="text-sm font-bold text-slate-800">Fee Payment Received</div>
-                      <div className="text-xs font-medium text-slate-500 mt-1">₹15,000 paid via Credit Card</div>
-                      <div className="text-[10px] font-bold text-slate-400 mt-3 flex items-center gap-1.5"><Clock className="w-3 h-3"/> 12 Jun 2024, 10:45 AM</div>
-                    </div>
-                  </div>
-                  <div className="relative group">
-                    <div className="absolute -left-[33px] w-6 h-6 rounded-full bg-amber-500 border-4 border-white shadow-sm group-hover:scale-125 transition-transform" />
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm ml-4">
-                      <div className="text-sm font-bold text-slate-800">Payment Reminder Sent</div>
-                      <div className="text-xs font-medium text-slate-500 mt-1">Automated SMS sent to +919876500000</div>
-                      <div className="text-[10px] font-bold text-slate-400 mt-3 flex items-center gap-1.5"><Clock className="w-3 h-3"/> 10 Jun 2024, 09:00 AM</div>
-                    </div>
-                  </div>
-                  <div className="relative group">
-                    <div className="absolute -left-[33px] w-6 h-6 rounded-full bg-blue-500 border-4 border-white shadow-sm group-hover:scale-125 transition-transform" />
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm ml-4">
-                      <div className="text-sm font-bold text-slate-800">Document Uploaded</div>
-                      <div className="text-xs font-medium text-slate-500 mt-1">Transfer Certificate verified by admin</div>
-                      <div className="text-[10px] font-bold text-slate-400 mt-3 flex items-center gap-1.5"><Clock className="w-3 h-3"/> 12 Apr 2024, 02:15 PM</div>
-                    </div>
-                  </div>
-                  <div className="relative group">
-                    <div className="absolute -left-[33px] w-6 h-6 rounded-full bg-brand-primary border-4 border-white shadow-sm group-hover:scale-125 transition-transform" />
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm ml-4">
-                      <div className="text-sm font-bold text-slate-800">Student Profile Created</div>
-                      <div className="text-xs font-medium text-slate-500 mt-1">Admitted to Class 10 Sec A</div>
-                      <div className="text-[10px] font-bold text-slate-400 mt-3 flex items-center gap-1.5"><Clock className="w-3 h-3"/> 01 Apr 2024, 11:30 AM</div>
-                    </div>
-                  </div>
+             <div className="glass-card rounded-[24px] p-8 border border-white/40 shadow-sm text-center py-32 bg-white/50">
+               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-100 shadow-inner">
+                 <Clock className="w-10 h-10 text-slate-300" />
                </div>
+               <h3 className="text-lg font-black text-slate-700 mb-2">No Recent Activity</h3>
+               <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">There is no recent activity recorded for this student.</p>
              </div>
           )}
 

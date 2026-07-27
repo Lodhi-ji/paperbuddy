@@ -99,13 +99,20 @@ export default function SchoolAdminDashboard() {
   // Form States - Individual Student
   const [stName, setStName] = useState('');
   const [stEmail, setStEmail] = useState('');
-  const [stPassword, setStPassword] = useState('Student123!');
   const [stPhone, setStPhone] = useState('');
   const [stRoll, setStRoll] = useState('');
   const [stClass, setStClass] = useState('');
   const [stSection, setStSection] = useState('A');
   const [stGuardian, setStGuardian] = useState('');
   const [stGPhone, setStGPhone] = useState('');
+  const [stDob, setStDob] = useState('');
+  const [stGender, setStGender] = useState('');
+  const [stBloodGroup, setStBloodGroup] = useState('');
+  const [stAddress, setStAddress] = useState('');
+  const [stPreviousSchool, setStPreviousSchool] = useState('');
+  const [stExtracurricular, setStExtracurricular] = useState('');
+  const [stGEmail, setStGEmail] = useState('');
+  const [stEmergency, setStEmergency] = useState('');
 
   // Form States - Apply Waiver / Penalty Dialog
   const [selectedFeeId, setSelectedFeeId] = useState('');
@@ -177,6 +184,31 @@ export default function SchoolAdminDashboard() {
     queryFn: () => api.get(`/accountant/student-fees?status=UNPAID&search=${studentSearch}&class=${selectedClassFilter}`),
   });
 
+  const lastMonthCollection = React.useMemo(() => {
+    if (!metrics?.revenueByMonth || metrics.revenueByMonth.length < 2) return 0;
+    return metrics.revenueByMonth[metrics.revenueByMonth.length - 2]?.collected || 0;
+  }, [metrics?.revenueByMonth]);
+
+  const collectionRate = React.useMemo(() => {
+    if (!metrics?.totalExpected) return 0;
+    return Math.round((metrics.totalCollected / metrics.totalExpected) * 100);
+  }, [metrics?.totalExpected, metrics?.totalCollected]);
+
+  const outstandingByMonth = React.useMemo(() => {
+    if (!unpaidFees) return [];
+    const monthlyMap = {};
+    unpaidFees.forEach(fee => {
+      const date = new Date(fee.dueDate);
+      const monthYear = date.toLocaleString('default', { month: 'short', year: 'numeric' });
+      const remaining = Number(fee.amountDue) + Number(fee.penaltyAmount) - Number(fee.amountPaid) - Number(fee.waiverAmount);
+      monthlyMap[monthYear] = (monthlyMap[monthYear] || 0) + Math.max(0, remaining);
+    });
+    return Object.keys(monthlyMap).map(key => ({
+      name: key,
+      amount: monthlyMap[key]
+    })).sort((a, b) => new Date(a.name) - new Date(b.name));
+  }, [unpaidFees]);
+
   // ----------------------------------------------------
   // MUTATIONS
   // ----------------------------------------------------
@@ -208,11 +240,21 @@ export default function SchoolAdminDashboard() {
     onSuccess: () => {
       setStName('');
       setStEmail('');
+      setStPhone('');
       setStRoll('');
       setStClass('');
+      setStSection('A');
       setStGuardian('');
       setStGPhone('');
-      setStPhone('');
+      setStDob('');
+      setStGender('');
+      setStBloodGroup('');
+      setStAddress('');
+      setStPreviousSchool('');
+      setStExtracurricular('');
+      setStGEmail('');
+      setStEmergency('');
+      setActiveTab('students-all');
       queryClient.invalidateQueries({ queryKey: ['schoolStudents'] });
       queryClient.invalidateQueries({ queryKey: ['schoolMetrics'] });
     },
@@ -288,13 +330,20 @@ export default function SchoolAdminDashboard() {
     createStudentMutation.mutate({
       name: stName,
       email: stEmail,
-      password: stPassword,
       phone: stPhone,
       rollNumber: stRoll,
       class: stClass,
       section: stSection,
       guardianName: stGuardian,
       guardianPhone: stGPhone,
+      dateOfBirth: stDob || undefined,
+      gender: stGender || undefined,
+      bloodGroup: stBloodGroup || undefined,
+      address: stAddress || undefined,
+      previousSchool: stPreviousSchool || undefined,
+      extracurricular: stExtracurricular || undefined,
+      guardianEmail: stGEmail || undefined,
+      emergencyContact: stEmergency || undefined,
     });
   };
 
@@ -340,6 +389,23 @@ export default function SchoolAdminDashboard() {
     } finally {
       setUploadLoading(false);
     }
+  };
+
+  const handleDownloadTemplate = () => {
+    const headers = [
+      'Name', 'Email', 'RollNumber', 'Class', 'Section', 'Phone',
+      'DateOfBirth', 'Gender', 'BloodGroup', 'Address', 'PreviousSchool',
+      'Extracurricular', 'GuardianName', 'GuardianPhone', 'GuardianEmail', 'EmergencyContact'
+    ];
+    const csvContent = headers.join(',') + '\n';
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'student_bulk_upload_template.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleApplyAction = (e) => {
@@ -391,7 +457,7 @@ export default function SchoolAdminDashboard() {
                   </div>
                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Estimated Revenue</p>
                   <h3 className="text-3xl font-black text-slate-800 tracking-tight mt-1">
-                    {metricsLoading ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : formatCurrency(metrics?.totalExpected || 850000)}
+                    {metricsLoading ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : formatCurrency(metrics?.totalExpected ?? 0)}
                   </h3>
                   <div className="mt-4 h-8 w-full bg-slate-50 rounded flex items-end gap-0.5 px-1 pb-1">
                     {/* Simulated Sparkline */}
@@ -413,10 +479,10 @@ export default function SchoolAdminDashboard() {
                   </div>
                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Revenue Collected</p>
                   <h3 className="text-3xl font-black text-slate-800 tracking-tight mt-1">
-                    {metricsLoading ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : formatCurrency(metrics?.totalCollected || 0)}
+                    {metricsLoading ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : formatCurrency(metrics?.totalCollected ?? 0)}
                   </h3>
                   <div className="mt-4 text-[10px] font-medium text-slate-400">
-                    Last Month: <strong className="text-slate-600">{formatCurrency(120000)}</strong>
+                    Last Month: <strong className="text-slate-600">{formatCurrency(lastMonthCollection)}</strong>
                   </div>
                 </div>
 
@@ -432,7 +498,7 @@ export default function SchoolAdminDashboard() {
                   </div>
                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Outstanding Due</p>
                   <h3 className="text-3xl font-black text-slate-800 tracking-tight mt-1">
-                    {metricsLoading ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : formatCurrency(metrics?.totalPending || 0)}
+                    {metricsLoading ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : formatCurrency(metrics?.totalPending ?? 0)}
                   </h3>
                   <div className="mt-4 text-[10px] font-medium text-slate-400">
                     <strong className="text-rose-500">{metrics?.defaultersCount || 0} students</strong> pending
@@ -450,7 +516,7 @@ export default function SchoolAdminDashboard() {
                     <div>
                       <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Collection Rate</p>
                       <h3 className="text-3xl font-black text-slate-800 tracking-tight mt-1">
-                        92%
+                        {collectionRate}%
                       </h3>
                     </div>
                     <div className="w-12 h-12 rounded-full border-4 border-amber-100 border-t-amber-500 flex items-center justify-center group-hover:rotate-180 transition-transform duration-700 ease-in-out" />
@@ -552,57 +618,53 @@ export default function SchoolAdminDashboard() {
 
               {/* Main Charts Row 2 */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Monthly Collection Bar Chart (Simulated for visual richness) */}
+                {/* Monthly Collection Bar Chart (Dynamic) */}
                 <div className="glass-card rounded-[24px] p-6 lg:p-8 border border-white/60 shadow-glass">
                   <h3 className="text-sm font-black text-slate-800 tracking-tight mb-6">Monthly Collection (Bar)</h3>
                   <div className="h-[250px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={[
-                        { name: 'Jan', collected: 12000, expected: 15000 },
-                        { name: 'Feb', collected: 18000, expected: 18000 },
-                        { name: 'Mar', collected: 15000, expected: 16000 },
-                        { name: 'Apr', collected: 22000, expected: 25000 },
-                        { name: 'May', collected: 25000, expected: 25000 },
-                        { name: 'Jun', collected: 28000, expected: 30000 },
-                      ]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                        <XAxis dataKey="name" tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} dy={10} />
-                        <YAxis tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
-                        <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
-                        <Bar dataKey="expected" fill="#E2E8F0" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="collected" fill="#22C55E" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    {metricsLoading ? (
+                      <div className="h-full flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand-primary" /></div>
+                    ) : metrics?.revenueByMonth && metrics.revenueByMonth.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={metrics.revenueByMonth} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                          <XAxis dataKey="month" tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} dy={10} />
+                          <YAxis tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                          <Tooltip formatter={(v) => [formatCurrency(v), 'Collected']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
+                          <Bar dataKey="collected" fill="#22C55E" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-slate-400 text-xs font-semibold">No collection history available.</div>
+                    )}
                   </div>
                 </div>
 
-                {/* Outstanding Trend Area (Simulated) */}
+                {/* Outstanding Trend Area (Dynamic) */}
                 <div className="glass-card rounded-[24px] p-6 lg:p-8 border border-white/60 shadow-glass">
                   <h3 className="text-sm font-black text-slate-800 tracking-tight mb-6">Outstanding Trend (Area)</h3>
                   <div className="h-[250px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={[
-                        { name: 'Jan', amount: 3000 },
-                        { name: 'Feb', amount: 0 },
-                        { name: 'Mar', amount: 1000 },
-                        { name: 'Apr', amount: 3000 },
-                        { name: 'May', amount: 0 },
-                        { name: 'Jun', amount: 2000 },
-                      ]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#EF4444" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                        <XAxis dataKey="name" tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} dy={10} />
-                        <YAxis tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
-                        <Area type="monotone" dataKey="amount" stroke="#EF4444" strokeWidth={3} fillOpacity={1} fill="url(#colorOut)" activeDot={{ r: 6, fill: '#EF4444', stroke: '#fff', strokeWidth: 3 }} />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                    {metricsLoading ? (
+                      <div className="h-full flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand-primary" /></div>
+                    ) : outstandingByMonth && outstandingByMonth.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={outstandingByMonth} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#EF4444" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                          <XAxis dataKey="name" tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} dy={10} />
+                          <YAxis tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                          <Tooltip formatter={(v) => [formatCurrency(v), 'Outstanding']} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
+                          <Area type="monotone" dataKey="amount" stroke="#EF4444" strokeWidth={3} fillOpacity={1} fill="url(#colorOut)" activeDot={{ r: 6, fill: '#EF4444', stroke: '#fff', strokeWidth: 3 }} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-slate-400 text-xs font-semibold">No outstanding dues.</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -981,6 +1043,68 @@ export default function SchoolAdminDashboard() {
                         className="w-full glass-input text-xs py-3 px-4"
                       />
                     </div>
+                    <div>
+                      <label className="block mb-1.5 uppercase tracking-wide">Date of Birth</label>
+                      <input
+                        type="date"
+                        value={stDob}
+                        onChange={(e) => setStDob(e.target.value)}
+                        className="w-full glass-input text-xs py-3 px-4"
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1.5 uppercase tracking-wide">Gender</label>
+                      <select
+                        value={stGender}
+                        onChange={(e) => setStGender(e.target.value)}
+                        className="w-full glass-input text-xs py-3 px-4"
+                      >
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block mb-1.5 uppercase tracking-wide">Blood Group</label>
+                      <input
+                        type="text"
+                        value={stBloodGroup}
+                        onChange={(e) => setStBloodGroup(e.target.value)}
+                        placeholder="e.g. O+"
+                        className="w-full glass-input text-xs py-3 px-4"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block mb-1.5 uppercase tracking-wide">Address</label>
+                      <input
+                        type="text"
+                        value={stAddress}
+                        onChange={(e) => setStAddress(e.target.value)}
+                        placeholder="Full Residential Address"
+                        className="w-full glass-input text-xs py-3 px-4"
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1.5 uppercase tracking-wide">Previous School</label>
+                      <input
+                        type="text"
+                        value={stPreviousSchool}
+                        onChange={(e) => setStPreviousSchool(e.target.value)}
+                        placeholder="Optional"
+                        className="w-full glass-input text-xs py-3 px-4"
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1.5 uppercase tracking-wide">Extracurricular</label>
+                      <input
+                        type="text"
+                        value={stExtracurricular}
+                        onChange={(e) => setStExtracurricular(e.target.value)}
+                        placeholder="e.g. Football, Chess"
+                        className="w-full glass-input text-xs py-3 px-4"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -1010,6 +1134,26 @@ export default function SchoolAdminDashboard() {
                         placeholder="+91 98765..."
                         className="w-full glass-input text-xs py-3 px-4"
                         required
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1.5 uppercase tracking-wide">Guardian Email</label>
+                      <input
+                        type="email"
+                        value={stGEmail}
+                        onChange={(e) => setStGEmail(e.target.value)}
+                        placeholder="Optional"
+                        className="w-full glass-input text-xs py-3 px-4"
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1.5 uppercase tracking-wide">Emergency Contact</label>
+                      <input
+                        type="text"
+                        value={stEmergency}
+                        onChange={(e) => setStEmergency(e.target.value)}
+                        placeholder="Optional"
+                        className="w-full glass-input text-xs py-3 px-4"
                       />
                     </div>
                   </div>
@@ -1057,7 +1201,10 @@ export default function SchoolAdminDashboard() {
                 <h2 className="text-2xl font-black text-slate-800 tracking-tight">Bulk Upload Students</h2>
                 <p className="text-xs font-medium text-slate-500 mt-1">Import multiple students at once via Excel spreadsheet.</p>
               </div>
-              <button className="bg-white border border-slate-200 hover:border-brand-primary/50 text-slate-600 hover:text-brand-primary rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-sm flex items-center gap-2">
+              <button 
+                onClick={handleDownloadTemplate}
+                className="bg-white border border-slate-200 hover:border-brand-primary/50 text-slate-600 hover:text-brand-primary rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-sm flex items-center gap-2"
+              >
                 <Download className="w-4 h-4" />
                 Download Template
               </button>
@@ -1167,6 +1314,8 @@ export default function SchoolAdminDashboard() {
         {activeTab === 'fees' && (
           <FeeManagementCenter
             feeTypes={feeTypes}
+            structures={structures}
+            students={students}
             typeName={typeName} setTypeName={setTypeName}
             typeDesc={typeDesc} setTypeDesc={setTypeDesc}
             typeRecurring={typeRecurring} setTypeRecurring={setTypeRecurring}
@@ -1339,6 +1488,7 @@ export default function SchoolAdminDashboard() {
         {activeTab === 'waivers' && (
           <FinancialAdjustmentsWorkspace
             unpaidFees={unpaidFees}
+            students={students}
             studentSearch={studentSearch} setStudentSearch={setStudentSearch}
             selectedClassFilter={selectedClassFilter} setSelectedClassFilter={setSelectedClassFilter}
             selectedFeeId={selectedFeeId} setSelectedFeeId={setSelectedFeeId}

@@ -23,6 +23,7 @@ import {
 
 export default function FinancialAdjustmentsWorkspace({
   unpaidFees,
+  students,
   studentSearch, setStudentSearch,
   selectedClassFilter, setSelectedClassFilter,
   selectedFeeId, setSelectedFeeId,
@@ -37,6 +38,40 @@ export default function FinancialAdjustmentsWorkspace({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [uiAdjustmentType, setUiAdjustmentType] = useState('waiver'); // 'scholarship', 'discount', 'waiver', 'penalty', 'correction'
   const [notes, setNotes] = useState('');
+
+  const calculations = React.useMemo(() => {
+    let pendingCount = 0;
+    let todayCount = 0;
+    let totalWaivers = 0;
+    let totalPenalties = 0;
+
+    if (students) {
+      students.forEach(student => {
+        student.studentFees?.forEach(fee => {
+          const waiver = Number(fee.waiverAmount) || 0;
+          const penalty = Number(fee.penaltyAmount) || 0;
+
+          totalWaivers += waiver;
+          totalPenalties += penalty;
+
+          if (fee.status === 'UNPAID' || fee.status === 'PARTIAL') {
+            pendingCount++;
+          }
+
+          if ((waiver > 0 || penalty > 0) && (fee.status === 'UNPAID' || fee.status === 'PARTIAL')) {
+            todayCount++;
+          }
+        });
+      });
+    }
+
+    return {
+      pendingCount,
+      todayCount,
+      totalWaivers,
+      totalPenalties
+    };
+  }, [students]);
 
   // Sync internal UI state with actual backend action type
   useEffect(() => {
@@ -151,21 +186,21 @@ export default function FinancialAdjustmentsWorkspace({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="glass-card rounded-[20px] p-5 border border-white/40 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
             <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Pending Adjustments</h3>
-            <div className="text-3xl font-black text-slate-800">24</div>
+            <div className="text-3xl font-black text-slate-800">{calculations.pendingCount}</div>
           </div>
           <div className="glass-card rounded-[20px] p-5 border border-white/40 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
             <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Today's Adjustments</h3>
-            <div className="text-3xl font-black text-slate-800">8</div>
+            <div className="text-3xl font-black text-slate-800">{calculations.todayCount}</div>
           </div>
           <div className="glass-card rounded-[20px] p-5 border border-white/40 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
             <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Total Waivers</h3>
-            <div className="text-3xl font-black text-emerald-600">₹38,000</div>
+            <div className="text-3xl font-black text-emerald-600">{formatCurrency(calculations.totalWaivers)}</div>
           </div>
           <div className="glass-card rounded-[20px] p-5 border border-white/40 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
             <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1 flex items-center gap-2">
               Penalties Applied
             </h3>
-            <div className="text-3xl font-black text-rose-600">₹8,500</div>
+            <div className="text-3xl font-black text-rose-600">{formatCurrency(calculations.totalPenalties)}</div>
           </div>
         </div>
 
