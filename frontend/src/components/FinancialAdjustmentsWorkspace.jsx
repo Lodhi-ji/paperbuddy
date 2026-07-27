@@ -18,7 +18,8 @@ import {
   Loader2,
   UploadCloud,
   ShieldCheck,
-  UserCircle2
+  UserCircle2,
+  X
 } from 'lucide-react';
 
 export default function FinancialAdjustmentsWorkspace({
@@ -296,7 +297,11 @@ export default function FinancialAdjustmentsWorkspace({
                            <CreditCard className="w-3.5 h-3.5 text-slate-400" /> {fee.feeStructure.feeType.name}
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-right font-black text-slate-800">{formatCurrency(fee.amountDue)}</td>
+                      <td className="py-4 px-6 text-right font-black text-slate-800">
+                        {formatCurrency(
+                          Math.max(0, Number(fee.amountDue) + Number(fee.penaltyAmount || 0) - Number(fee.amountPaid || 0) - Number(fee.waiverAmount || 0))
+                        )}
+                      </td>
                       <td className="py-4 px-6">
                         {(fee.waiverAmount > 0 || fee.penaltyAmount > 0) ? (
                            <div className="flex items-center justify-center gap-1">
@@ -523,9 +528,12 @@ export default function FinancialAdjustmentsWorkspace({
                           <span className="text-xs font-black uppercase tracking-widest text-slate-400">Final Payable</span>
                           <span className="text-3xl font-black tabular-nums">
                             {formatCurrency(
-                              uiAdjustmentType === 'penalty'
-                                ? Number(activeFee.amountDue) + Number(actionAmount || 0)
-                                : Math.max(0, Number(activeFee.amountDue) - Number(actionAmount || 0))
+                              Math.max(0, 
+                                Number(activeFee.amountDue) 
+                                - Number(activeFee.amountPaid || 0) 
+                                + (uiAdjustmentType === 'penalty' ? Number(actionAmount || 0) : Number(activeFee.penaltyAmount || 0))
+                                - (uiAdjustmentType !== 'penalty' ? Number(actionAmount || 0) : Number(activeFee.waiverAmount || 0))
+                              )
                             )}
                           </span>
                         </div>
@@ -586,8 +594,13 @@ export default function FinancialAdjustmentsWorkspace({
                     Cancel
                   </button>
                   <button 
-                    type="submit"
-                    form="adjustment-modal-form"
+                    type="button"
+                    onClick={(e) => {
+                      const form = document.getElementById('adjustment-modal-form');
+                      if (form.reportValidity()) {
+                        handleApplyAction(e);
+                      }
+                    }}
                     disabled={applyWaiverMutation.isPending || applyPenaltyMutation.isPending}
                     className={`flex-1 md:flex-none px-8 py-3 rounded-xl text-white text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2 ${
                       uiAdjustmentType === 'penalty' 

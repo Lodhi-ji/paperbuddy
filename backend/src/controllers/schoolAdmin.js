@@ -394,6 +394,19 @@ export async function getStudents(req, res) {
   }
 }
 
+function parseExcelDate(dateValue) {
+  if (!dateValue) return null;
+  if (dateValue instanceof Date) {
+    return isNaN(dateValue.getTime()) ? null : dateValue;
+  }
+  if (typeof dateValue === 'number') {
+    // Excel date serial number to JS Date
+    return new Date(Math.round((dateValue - 25569) * 86400 * 1000));
+  }
+  const d = new Date(dateValue);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 export async function bulkUploadStudents(req, res) {
   const schoolId = req.schoolId;
 
@@ -502,7 +515,7 @@ export async function bulkUploadStudents(req, res) {
               guardianPhone: String(GuardianPhone).trim(),
               guardianEmail: GuardianEmail ? String(GuardianEmail).trim() : null,
               emergencyContact: EmergencyContact ? String(EmergencyContact).trim() : null,
-              dateOfBirth: DateOfBirth ? new Date(DateOfBirth) : null,
+              dateOfBirth: parseExcelDate(DateOfBirth),
               gender: Gender ? String(Gender).trim() : null,
               bloodGroup: BloodGroup ? String(BloodGroup).trim() : null,
               address: Address ? String(Address).trim() : null,

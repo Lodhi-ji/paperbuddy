@@ -289,6 +289,9 @@ export default function SchoolAdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ['unpaidFeesList'] });
       queryClient.invalidateQueries({ queryKey: ['schoolStudents'] });
     },
+    onError: (err) => {
+      setActionMessage(`Error: ${err.response?.data?.error || err.message}`);
+    },
   });
 
   const applyPenaltyMutation = useMutation({
@@ -300,6 +303,9 @@ export default function SchoolAdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ['schoolMetrics'] });
       queryClient.invalidateQueries({ queryKey: ['unpaidFeesList'] });
       queryClient.invalidateQueries({ queryKey: ['schoolStudents'] });
+    },
+    onError: (err) => {
+      setActionMessage(`Error: ${err.response?.data?.error || err.message}`);
     },
   });
 
@@ -1292,17 +1298,36 @@ export default function SchoolAdminDashboard() {
                     Format Requirements
                   </h3>
                   <div className="text-xs text-slate-600 space-y-4 font-medium leading-relaxed">
-                    <p>For a successful import, your Excel file must contain exactly the following header columns in the first row:</p>
-                    <ul className="space-y-2 font-mono text-[10px] bg-white p-3 rounded-xl border border-slate-200">
-                      <li><span className="font-bold text-brand-primary">Name</span></li>
-                      <li><span className="font-bold text-brand-primary">Email</span></li>
-                      <li><span className="font-bold text-brand-primary">RollNumber</span></li>
-                      <li><span className="font-bold text-brand-primary">Class</span></li>
-                      <li><span className="font-bold text-brand-primary">Section</span></li>
-                      <li><span className="font-bold text-brand-primary">GuardianName</span></li>
-                      <li><span className="font-bold text-brand-primary">GuardianPhone</span></li>
-                    </ul>
-                    <p className="text-[10px] text-slate-400">Values are case-sensitive. Missing columns will result in validation errors for those rows.</p>
+                    <p>For a successful import, your Excel file should contain the following header columns in the first row:</p>
+                    <div className="space-y-3 my-3">
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Required Columns:</div>
+                        <ul className="grid grid-cols-2 gap-2 font-mono text-[10px] bg-white p-3 rounded-xl border border-slate-200">
+                          <li><span className="font-bold text-brand-primary">Name</span></li>
+                          <li><span className="font-bold text-brand-primary">Email</span></li>
+                          <li><span className="font-bold text-brand-primary">RollNumber</span></li>
+                          <li><span className="font-bold text-brand-primary">Class</span></li>
+                          <li><span className="font-bold text-brand-primary">Section</span></li>
+                          <li><span className="font-bold text-brand-primary">GuardianName</span></li>
+                          <li><span className="font-bold text-brand-primary">GuardianPhone</span></li>
+                        </ul>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Optional Columns:</div>
+                        <ul className="grid grid-cols-2 gap-2 font-mono text-[10px] bg-white p-3 rounded-xl border border-slate-200">
+                          <li><span className="font-bold text-slate-600">Phone</span></li>
+                          <li><span className="font-bold text-slate-600">DateOfBirth</span></li>
+                          <li><span className="font-bold text-slate-600">Gender</span></li>
+                          <li><span className="font-bold text-slate-600">BloodGroup</span></li>
+                          <li><span className="font-bold text-slate-600">Address</span></li>
+                          <li><span className="font-bold text-slate-600">PreviousSchool</span></li>
+                          <li><span className="font-bold text-slate-600">Extracurricular</span></li>
+                          <li><span className="font-bold text-slate-600">GuardianEmail</span></li>
+                          <li><span className="font-bold text-slate-600">EmergencyContact</span></li>
+                        </ul>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-400">Values are case-sensitive. Missing required columns will result in validation errors for those rows.</p>
                   </div>
                 </div>
               </div>

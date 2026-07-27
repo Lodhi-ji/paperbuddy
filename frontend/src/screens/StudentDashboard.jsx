@@ -651,7 +651,7 @@ export default function StudentDashboard() {
                 <div className="absolute w-28 h-28 bg-indigo-500/10 rounded-full wave-effect" style={{ animationDelay: '0.5s' }} />
                 
                 <div className="w-16 h-16 bg-[#5B5CEB] rounded-2xl shadow-xl flex items-center justify-center text-white text-2xl font-bold relative z-10">
-                  💸
+                  <Banknote className="w-8 h-8" />
                 </div>
               </div>
 
