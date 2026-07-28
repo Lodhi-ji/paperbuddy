@@ -2,7 +2,11 @@
 // secrets before any other module (routers, middlewares, prisma client) runs.
 import { PORT } from './src/config.js';
 import app from './src/app.js';
+import { startRecurringBillingJob } from './src/jobs/recurringBilling.js';
+import { initPenaltyCron } from './src/cron/penaltyCron.js';
 
 app.listen(PORT, () => {
   console.log(`Campus Pay Backend Server listening on port ${PORT}`);
+  startRecurringBillingJob();
+  initPenaltyCron();
 });

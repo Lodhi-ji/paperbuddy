@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
@@ -7,6 +7,7 @@ import Header from '../components/Header';
 import PrintReceipt from '../components/PrintReceipt';
 import StudentProfile360 from '../components/StudentProfile360';
 import MessagesView from '../components/MessagesView';
+import TransactionCenter from '../components/TransactionCenter';
 import {
   IndianRupee,
   Users,
@@ -82,6 +83,23 @@ export default function AccountantDashboard() {
   // Printing state
   const [printReceiptData, setPrintReceiptData] = useState(null);
 
+  // Transaction Center Filters
+  const [txnSearch, setTxnSearch] = useState('');
+  const [txnMethod, setTxnMethod] = useState('');
+  const [txnStatus, setTxnStatus] = useState('');
+
+  // Keyboard Shortcut for Search (Cmd+K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('search-input')?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // ----------------------------------------------------
   // DATA FETCHING
   // ----------------------------------------------------
@@ -93,7 +111,7 @@ export default function AccountantDashboard() {
 
   const { data: feesQueue, isLoading: queueLoading } = useQuery({
     queryKey: ['accountantFeesQueue', search],
-    queryFn: () => api.get(`/accountant/student-fees?status=UNPAID&search=${search}`),
+    queryFn: () => api.get(`/accountant/student-fees?status=UNPAID,PARTIAL&search=${search}`),
     enabled: canRecordPayment && viewMode === 'POS',
   });
 
@@ -271,32 +289,40 @@ export default function AccountantDashboard() {
   const progressPercent = totalPendingStudents ? Math.min(100, (completedTodayCount / totalPendingStudents) * 100) : 0;
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-[#F8FAFC] min-h-screen">
+    <div className="print:hidden max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-[#F8FAFC] min-h-screen">
       <Header />
 
       {/* MODE SWITCHER */}
-      <div className="flex justify-center mb-8">
-        <div className="bg-slate-200/50 p-1 rounded-2xl flex gap-1 shadow-inner border border-slate-200">
+      <div className="flex justify-center mb-6">
+        <div className="flex gap-6 border-b border-slate-200 w-full">
+          <button 
+            onClick={() => setViewMode('TRANSACTIONS')}
+            className={`pb-4 text-sm font-bold transition-all border-b-2 ${
+              viewMode === 'TRANSACTIONS' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Transaction Center
+          </button>
           <button 
             onClick={() => setViewMode('POS')}
-            className={`px-8 py-3 rounded-xl text-sm font-black uppercase tracking-widest transition-all ${
-              viewMode === 'POS' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'
+            className={`pb-4 text-sm font-bold transition-all border-b-2 ${
+              viewMode === 'POS' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
             POS Workstation
           </button>
           <button 
             onClick={() => setViewMode('DIRECTORY')}
-            className={`px-8 py-3 rounded-xl text-sm font-black uppercase tracking-widest transition-all ${
-              viewMode === 'DIRECTORY' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'
+            className={`pb-4 text-sm font-bold transition-all border-b-2 ${
+              viewMode === 'DIRECTORY' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
             Student Directory
           </button>
           <button 
             onClick={() => setViewMode('MESSAGES')}
-            className={`px-8 py-3 rounded-xl text-sm font-black uppercase tracking-widest transition-all ${
-              viewMode === 'MESSAGES' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'
+            className={`pb-4 text-sm font-bold transition-all border-b-2 ${
+              viewMode === 'MESSAGES' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
             Messages
@@ -304,33 +330,33 @@ export default function AccountantDashboard() {
         </div>
       </div>
 
-      {viewMode === 'MESSAGES' ? (
+      {viewMode === 'TRANSACTIONS' ? (
+        <TransactionCenter 
+          transactions={transactions}
+          txnsLoading={txnsLoading}
+          txnSearch={txnSearch} setTxnSearch={setTxnSearch}
+          txnMethod={txnMethod} setTxnMethod={setTxnMethod}
+          txnStatus={txnStatus} setTxnStatus={setTxnStatus}
+        />
+      ) : viewMode === 'MESSAGES' ? (
         <MessagesView />
       ) : viewMode === 'POS' ? (
         <>
           {/* ──────────────────────────────────────────────────────── */}
-          {/* HERO CTA */}
+          {/* INLINE HERO */}
           {/* ──────────────────────────────────────────────────────── */}
-      <div className="bg-indigo-700 rounded-[32px] p-8 md:p-12 text-white shadow-2xl relative overflow-hidden mb-8 flex flex-col md:flex-row items-center justify-between gap-8">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500 rounded-full blur-[100px] opacity-50 translate-x-1/2 -translate-y-1/2 pointer-events-none" />
-        
-        <div className="relative z-10">
-          <p className="text-indigo-200 font-bold tracking-widest uppercase text-sm mb-2">Good Morning, {user?.name?.split(' ')[0] || 'Mark'}</p>
-          <h1 className="text-5xl font-black tracking-tight mb-4">Today's Pending Collections</h1>
-          <div className="flex items-baseline gap-4">
-            <span className="text-6xl font-black text-emerald-400">{formatCurrency(totalPendingAmount)}</span>
-            <span className="text-2xl font-bold text-indigo-200 border-l-2 border-indigo-500 pl-4">{totalPendingStudents} Students</span>
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Good Morning, {user?.name?.split(' ')[0] || 'Mark'}</h1>
+              <p className="text-slate-500 text-sm mt-1">Ready to collect <strong className="font-bold text-slate-800">{formatCurrency(totalPendingAmount)}</strong> from <strong className="font-bold text-slate-800">{totalPendingStudents}</strong> students today.</p>
+            </div>
+            <button 
+              onClick={() => document.getElementById('search-input')?.focus()}
+              className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors"
+            >
+              <Search className="w-4 h-4" /> Start Collecting (Cmd+K)
+            </button>
           </div>
-        </div>
-
-        <button 
-          onClick={() => document.getElementById('search-input')?.focus()}
-          className="relative z-10 shrink-0 bg-white text-indigo-700 px-10 py-6 rounded-2xl font-black text-xl flex items-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-[0_20px_40px_rgba(0,0,0,0.2)]"
-        >
-          <Play className="fill-indigo-700 w-6 h-6" />
-          Start Collecting
-        </button>
-      </div>
 
       {/* ──────────────────────────────────────────────────────── */}
       {/* WORK QUEUE */}
@@ -345,7 +371,7 @@ export default function AccountantDashboard() {
             { label: 'Overdue Accounts', count: metrics?.defaultersCount ?? 0, color: 'text-rose-700', bg: 'bg-rose-100', border: 'border-rose-200' },
             { label: 'Refund Requests', count: 0, color: 'text-purple-700', bg: 'bg-purple-100', border: 'border-purple-200' },
           ].map((queue, idx) => (
-            <button key={idx} className={`p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between h-24 hover:border-slate-400 hover:shadow-md transition-all group active:scale-95`}>
+            <div key={idx} className={`p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between h-24 hover:border-slate-400 hover:shadow-md transition-all group`}>
               <span className={`text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-800 transition-colors text-left`}>{queue.label}</span>
               <div className="flex justify-between items-end w-full">
                 <span className="text-2xl font-black text-slate-800">{queue.count}</span>
@@ -353,7 +379,7 @@ export default function AccountantDashboard() {
                   <ArrowRight className={`w-4 h-4 ${queue.color}`} />
                 </div>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       </div>
@@ -367,10 +393,8 @@ export default function AccountantDashboard() {
         <div className="lg:col-span-2 space-y-4">
           
           {/* Persistent Search Bar */}
-          <div className="relative group shadow-lg rounded-2xl bg-white overflow-hidden border border-slate-200">
-            <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
-              <Search className="h-6 w-6 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
-            </div>
+          <div className="relative group border border-slate-200 bg-white rounded-lg overflow-hidden flex items-center shadow-sm">
+            <Search className="w-5 h-5 text-slate-400 ml-4 shrink-0" />
             <input
               id="search-input"
               type="text"
@@ -379,9 +403,13 @@ export default function AccountantDashboard() {
                 setSearch(e.target.value);
                 if (e.target.value === '') setSelectedStudent(null);
               }}
-              placeholder="Search Student Name or Roll Number..."
-              className="w-full pl-16 pr-6 py-6 bg-transparent text-xl font-black text-slate-800 placeholder:text-slate-300 focus:outline-none focus:bg-indigo-50/30 transition-colors"
+              placeholder="Search by student name or roll number..."
+              className="w-full px-4 py-3 bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
             />
+            <div className="mr-4 flex gap-1">
+              <kbd className="px-2 py-1 text-[10px] font-medium bg-slate-100 text-slate-500 rounded border border-slate-200">⌘</kbd>
+              <kbd className="px-2 py-1 text-[10px] font-medium bg-slate-100 text-slate-500 rounded border border-slate-200">K</kbd>
+            </div>
           </div>
 
           {/* POS Display Area */}
@@ -395,30 +423,25 @@ export default function AccountantDashboard() {
                     <div className="flex-1 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>
                   ) : studentsWithFees.length > 0 ? (
                     <div className="space-y-2 p-4 animate-in fade-in slide-in-from-bottom-4 duration-200">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 mb-4">Select Student</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-2 mb-2">Search Results</p>
+                      <div className="flex flex-col gap-1">
                       {studentsWithFees.map((sData) => (
                         <button
                           key={sData.student.id}
                           onClick={() => handleSelectStudent(sData)}
-                          className="w-full text-left p-5 rounded-2xl border-2 border-transparent hover:border-indigo-600 hover:bg-indigo-50 transition-all flex justify-between items-center group"
+                          className="w-full text-left px-4 py-3 rounded-lg border border-transparent hover:border-slate-200 hover:bg-slate-50 transition-all flex justify-between items-center group"
                         >
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-500 text-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                              {sData.student.user.name.charAt(0)}
-                            </div>
+                          <div className="flex items-center gap-3">
+                            <FileText className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
                             <div>
-                              <h3 className="text-lg font-black text-slate-800">{sData.student.user.name}</h3>
-                              <div className="text-xs font-bold text-slate-500 mt-0.5">
-                                Class {sData.student.class} • Roll {sData.student.rollNumber}
-                              </div>
+                              <span className="text-sm font-medium text-slate-900">{sData.student.user.name}</span>
+                              <span className="text-xs text-slate-500 ml-2">Class {sData.student.class} • Roll {sData.student.rollNumber}</span>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <span className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Total Outstanding</span>
-                            <span className="text-xl font-black text-rose-600">{formatCurrency(sData.totalOutstanding)}</span>
-                          </div>
+                          <span className="text-sm font-mono font-medium text-slate-900">{formatCurrency(sData.totalOutstanding)}</span>
                         </button>
                       ))}
+                      </div>
                     </div>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -428,10 +451,10 @@ export default function AccountantDashboard() {
                   )
                 ) : (
                   /* State 0: Idle POS */
-                  <div className="flex-1 flex flex-col items-center justify-center text-center opacity-30">
-                    <Wallet className="w-20 h-20 text-slate-400 mb-6" />
-                    <p className="text-2xl font-black text-slate-500 uppercase tracking-widest">POS Terminal Ready</p>
-                    <p className="text-sm font-bold text-slate-400 mt-2">Scan ID or search student to begin</p>
+                  <div className="flex-1 flex flex-col items-center justify-center text-center">
+                    <FileText className="w-8 h-8 text-slate-300 mb-3" />
+                    <p className="text-sm font-medium text-slate-500">No student selected</p>
+                    <p className="text-xs text-slate-400 mt-1">Search or scan to begin</p>
                   </div>
                 )}
               </div>
@@ -439,30 +462,27 @@ export default function AccountantDashboard() {
               /* State 2: Student POS Card */
               <div className="flex-1 flex flex-col animate-in slide-in-from-right-8 duration-300">
                 {/* Header Profile */}
-                <div className="bg-slate-900 p-8 text-white flex justify-between items-start relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500 rounded-full blur-[80px] opacity-20 -translate-y-1/2 translate-x-1/3 pointer-events-none" />
-                  
-                  <div className="flex items-center gap-5 z-10">
-                    <div className="w-16 h-16 rounded-2xl bg-white text-slate-900 flex items-center justify-center font-black text-2xl shadow-xl">
+                <div className="bg-slate-50 border-b border-slate-200 p-6 flex justify-between items-center">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-lg border border-slate-300">
                       {selectedStudent.student.user.name.charAt(0)}
                     </div>
                     <div>
-                      <h2 className="text-2xl font-black">{selectedStudent.student.user.name}</h2>
-                      <p className="text-slate-400 font-bold text-sm mt-1">Class {selectedStudent.student.class} • Roll {selectedStudent.student.rollNumber}</p>
-                      <p className="text-slate-500 font-semibold text-xs mt-1">Guardian: {selectedStudent.student.guardianName || 'N/A'}</p>
+                      <h2 className="text-xl font-bold text-slate-900">{selectedStudent.student.user.name}</h2>
+                      <p className="text-slate-500 text-sm">Class {selectedStudent.student.class} • Roll {selectedStudent.student.rollNumber}</p>
                     </div>
                   </div>
                   
-                  <div className="text-right z-10">
-                    <span className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Total Outstanding</span>
-                    <span className="text-3xl font-black text-white">{formatCurrency(selectedStudent.totalOutstanding)}</span>
+                  <div className="text-right">
+                    <span className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-0.5">Total Outstanding</span>
+                    <span className="text-2xl font-mono font-medium text-slate-900">{formatCurrency(selectedStudent.totalOutstanding)}</span>
                   </div>
                 </div>
 
                 <div className="p-8 flex-1 flex flex-col">
                   {/* Bill Selection */}
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 border-b border-slate-200 pb-2">Outstanding Bills</h3>
-                  <div className="space-y-3 mb-8">
+                  <h3 className="text-xs font-bold text-slate-900 mb-3 flex items-center gap-2"><ListTodo className="w-4 h-4 text-slate-400" /> Outstanding Bills</h3>
+                  <div className="space-y-1 mb-8">
                     {selectedStudent.fees.map(fee => {
                       const amount = getRemainingAmount(fee);
                       const isSelected = selectedFeeIds.includes(fee.id);
@@ -470,22 +490,23 @@ export default function AccountantDashboard() {
                         <div 
                           key={fee.id}
                           onClick={() => toggleFeeSelection(fee.id, amount)}
-                          className={`flex justify-between items-center p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                            isSelected ? 'border-indigo-600 bg-indigo-50' : 'border-slate-200 hover:border-slate-300'
+                          className={`flex justify-between items-center px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
+                            isSelected ? 'bg-slate-100' : 'hover:bg-slate-50'
                           }`}
                         >
-                          <div className="flex items-center gap-4">
-                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
-                              isSelected ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300'
+                          <div className="flex items-center gap-3">
+                            <div className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${
+                              isSelected ? 'bg-slate-900 border-slate-900 text-white' : 'border-slate-300 bg-white'
                             }`}>
-                              {isSelected && <CheckCircle2 className="w-4 h-4" />}
+                              {isSelected && <CheckCircle2 className="w-3 h-3" />}
                             </div>
                             <div>
-                              <p className="font-bold text-slate-800">{fee.feeStructure.feeType.name}</p>
-                              {fee.penaltyAmount > 0 && <p className="text-[10px] text-rose-500 font-bold mt-0.5">Includes {formatCurrency(Number(fee.penaltyAmount))} late fee</p>}
+                              <p className={`text-sm ${isSelected ? 'font-medium text-slate-900' : 'text-slate-700'}`}>{fee.feeStructure.feeType.name}</p>
+                              {Number(fee.penaltyAmount) > 0 && <p className="text-[10px] text-rose-500 mt-0.5">Includes {formatCurrency(Number(fee.penaltyAmount))} late fee</p>}
+                              {Number(fee.waiverAmount) > 0 && <p className="text-[10px] text-emerald-500 mt-0.5">{formatCurrency(Number(fee.waiverAmount))} discount applied</p>}
                             </div>
                           </div>
-                          <span className={`font-black text-lg ${isSelected ? 'text-indigo-700' : 'text-slate-600'}`}>
+                          <span className={`text-sm font-mono ${isSelected ? 'font-medium text-slate-900' : 'text-slate-500'}`}>
                             {formatCurrency(amount)}
                           </span>
                         </div>
@@ -498,39 +519,34 @@ export default function AccountantDashboard() {
                     {paySuccess && <div className="mb-4 p-3 bg-emerald-50 text-emerald-600 text-xs font-bold rounded-xl flex items-center gap-2"><CheckCircle2 className="w-4 h-4"/> {paySuccess}</div>}
 
                     {/* Payment Method */}
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Payment Method</h3>
-                    <div className="grid grid-cols-4 gap-3 mb-6">
+                    <div className="flex gap-2 p-1 bg-slate-100 rounded-lg mb-6">
                       {['CASH', 'UPI', 'CARD', 'CHEQUE'].map((m) => (
                         <button
                           key={m}
                           type="button"
                           onClick={() => { setPayMethod(m); setPayError(''); }}
-                          className={`py-4 rounded-xl border-2 font-black transition-all flex flex-col items-center gap-2 ${
+                          className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
                             payMethod === m 
-                              ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-105' 
-                              : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50'
+                              ? 'bg-white text-slate-900 shadow-sm' 
+                              : 'text-slate-500 hover:text-slate-700'
                           }`}
                         >
-                          {m === 'CASH' && <Banknote className="w-6 h-6" />}
-                          {m === 'UPI' && <Smartphone className="w-6 h-6" />}
-                          {m === 'CARD' && <CreditCard className="w-6 h-6" />}
-                          {m === 'CHEQUE' && <Landmark className="w-6 h-6" />}
                           {m}
                         </button>
                       ))}
                     </div>
 
                     {/* Amount & Submit */}
-                    <div className="flex gap-4 items-end">
+                    <div className="flex gap-3 items-end">
                       <div className="flex-1">
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Amount Received</label>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1.5">Amount Received</label>
                         <div className="relative">
-                          <IndianRupee className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400" />
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-mono">₹</span>
                           <input
                             type="number"
                             value={payAmount}
                             onChange={(e) => setPayAmount(e.target.value)}
-                            className="w-full pl-14 pr-4 py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl text-2xl font-black text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white transition-colors"
+                            className="w-full pl-8 pr-3 py-2.5 bg-white border border-slate-300 rounded-lg text-lg font-mono font-medium text-slate-900 focus:outline-none focus:border-slate-500 transition-colors"
                             required
                           />
                         </div>
@@ -538,25 +554,20 @@ export default function AccountantDashboard() {
                       <button
                         type="submit"
                         disabled={recordPaymentMutation.isPending || selectedFeeIds.length === 0}
-                        className="w-1/2 py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-lg uppercase tracking-widest shadow-xl shadow-emerald-500/30 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 h-[72px]"
+                        className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 h-[46px]"
                       >
-                        {recordPaymentMutation.isPending ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Receive'}
-                        {!recordPaymentMutation.isPending && <ArrowRight className="w-5 h-5" />}
+                        {recordPaymentMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Receive Payment'}
                       </button>
                     </div>
 
                     {/* Receipt Toggle */}
                     <div className="mt-4 flex justify-between items-center">
-                      <button type="button" onClick={() => setSelectedStudent(null)} className="text-xs font-bold text-slate-500 hover:text-slate-800 uppercase tracking-widest">
+                      <button type="button" onClick={() => setSelectedStudent(null)} className="text-xs font-medium text-slate-500 hover:text-slate-900">
                         Cancel
                       </button>
-                      <label className="flex items-center gap-2 cursor-pointer group">
-                        <div className="relative flex items-center justify-center">
-                          <input type="checkbox" checked={generateReceipt} onChange={(e) => setGenerateReceipt(e.target.checked)} className="peer sr-only" />
-                          <div className="w-5 h-5 border-2 border-slate-300 rounded transition-colors peer-checked:bg-indigo-600 peer-checked:border-indigo-600" />
-                          <CheckCircle2 className="w-3.5 h-3.5 text-white absolute pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" />
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-800 transition-colors">Generate Receipt</span>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={generateReceipt} onChange={(e) => setGenerateReceipt(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900" />
+                        <span className="text-xs font-medium text-slate-600">Print receipt</span>
                       </label>
                     </div>
 
@@ -572,75 +583,125 @@ export default function AccountantDashboard() {
         <div className="space-y-6">
           
           {/* Action Required */}
-          <div className="bg-white rounded-[32px] p-6 border border-rose-100 shadow-sm">
-            <h3 className="text-xs font-black uppercase tracking-widest text-rose-600 mb-5 border-b border-rose-100 pb-2">Action Required</h3>
+          <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-900 mb-3 flex items-center gap-2"><AlertTriangle className="w-3.5 h-3.5" /> Action Required</h3>
             
-            <div className="space-y-4">
+            <div className="flex flex-col gap-2">
               {metrics?.pendingCheques && metrics.pendingCheques.length > 0 ? (
-                metrics.pendingCheques.map((chq, idx) => (
-                  <React.Fragment key={chq.id}>
-                    {idx > 0 && <div className="w-full h-px bg-slate-100" />}
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-[10px] font-black uppercase text-rose-500 tracking-wider">Cheque Clearance Required</p>
-                        <p className="text-sm font-bold text-slate-800">{chq.studentName}</p>
-                        <p className="text-xs font-mono text-slate-500">{formatCurrency(chq.amount)} • Cheque #{chq.chequeNumber}</p>
-                      </div>
-                      <div className="flex gap-1.5">
-                        <button 
-                          onClick={() => reconcileChequeMutation.mutate({ id: chq.id, status: 'CLEARED' })}
-                          disabled={reconcileChequeMutation.isPending}
-                          className="text-xs font-black bg-emerald-50 text-emerald-600 px-2.5 py-1.5 rounded-lg hover:bg-emerald-600 hover:text-white transition-colors disabled:opacity-50"
-                        >
-                          Clear
-                        </button>
-                        <button 
-                          onClick={() => reconcileChequeMutation.mutate({ id: chq.id, status: 'BOUNCED' })}
-                          disabled={reconcileChequeMutation.isPending}
-                          className="text-xs font-black bg-rose-50 text-rose-600 px-2.5 py-1.5 rounded-lg hover:bg-rose-600 hover:text-white transition-colors disabled:opacity-50"
-                        >
-                          Bounce
-                        </button>
-                      </div>
+                metrics.pendingCheques.map((chq) => (
+                  <div key={chq.id} className="p-3 border border-slate-200 rounded-lg bg-slate-50 flex justify-between items-start">
+                    <div>
+                      <p className="text-xs font-medium text-slate-900">{chq.studentName}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">Cheque #{chq.chequeNumber} • {formatCurrency(chq.amount)}</p>
                     </div>
-                  </React.Fragment>
+                    <div className="flex flex-col gap-1.5">
+                      <button 
+                        onClick={() => reconcileChequeMutation.mutate({ id: chq.id, status: 'CLEARED' })}
+                        disabled={reconcileChequeMutation.isPending}
+                        className="text-[10px] font-medium bg-white border border-slate-200 text-slate-700 px-2 py-1 rounded hover:bg-slate-100 transition-colors disabled:opacity-50"
+                      >
+                        Clear
+                      </button>
+                      <button 
+                        onClick={() => reconcileChequeMutation.mutate({ id: chq.id, status: 'BOUNCED' })}
+                        disabled={reconcileChequeMutation.isPending}
+                        className="text-[10px] font-medium bg-white border border-rose-200 text-rose-600 px-2 py-1 rounded hover:bg-rose-50 transition-colors disabled:opacity-50"
+                      >
+                        Bounce
+                      </button>
+                    </div>
+                  </div>
                 ))
               ) : (
-                <div className="py-8 text-center text-slate-400 text-xs font-semibold">
-                  All caught up! No pending cheque verifications required.
+                <div className="py-4 text-center text-slate-400 text-xs">
+                  Inbox zero.
                 </div>
               )}
             </div>
           </div>
+          {/* Overdue Accounts */}
+          <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm min-h-[250px]">
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2"><UserSearch className="w-3.5 h-3.5" /> Overdue Accounts</h3>
 
-          {/* Recent Collections */}
-          <div className="bg-white rounded-[32px] p-6 border border-slate-200 shadow-sm min-h-[400px]">
-            <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 mb-5 border-b border-slate-100 pb-2">Recent Collections</h3>
-
-            {txnsLoading ? (
-              <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
-            ) : todayTransactions.length > 0 ? (
-              <div className="space-y-4">
-                {todayTransactions.slice(0, 5).map(tx => (
-                  <div key={tx.id} className="flex justify-between items-center group">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black text-slate-400 w-10">{new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        <span className="text-sm font-bold text-slate-800">{tx.studentFee?.student?.user?.name || 'System User'}</span>
+            {metricsLoading ? (
+              <div className="py-8 flex justify-center"><Loader2 className="w-4 h-4 animate-spin text-slate-300" /></div>
+            ) : metrics?.defaultersList && metrics.defaultersList.length > 0 ? (
+              <div className="flex flex-col gap-0.5">
+                {metrics.defaultersList.slice(0, 5).map(fee => {
+                  const amt = Number(fee.amountDue) + Number(fee.penaltyAmount) - Number(fee.waiverAmount) - Number(fee.amountPaid);
+                  return (
+                    <div key={fee.id} className="flex justify-between items-center p-2 rounded-lg hover:bg-slate-50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600">
+                          {fee.student?.user?.name?.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-slate-900">{fee.student?.user?.name}</p>
+                          <p className="text-[10px] text-slate-500">{fee.feeStructure?.feeType?.name} • Class {fee.student?.class}</p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 mt-1 ml-12">
-                        <span className="font-mono text-xs font-black text-emerald-600">{formatCurrency(tx.amount)}</span>
-                        <span className="text-[9px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                           • {tx.method} {tx.status === 'PENDING' && <span className="text-amber-500">Pending</span>}
-                           {tx.status === 'SUCCESS' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
-                        </span>
+                      <span className="text-sm font-mono font-medium text-rose-600">{formatCurrency(amt)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-slate-400 text-xs">No overdue accounts!</div>
+            )}
+          </div>
+          {/* Fee Adjustments */}
+          <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm min-h-[200px]">
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2"><ArrowRight className="w-3.5 h-3.5" /> Fee Adjustments</h3>
+
+            {queueLoading ? (
+              <div className="py-8 flex justify-center"><Loader2 className="w-4 h-4 animate-spin text-slate-300" /></div>
+            ) : feesQueue && feesQueue.filter(f => Number(f.waiverAmount) > 0 || Number(f.penaltyAmount) > 0).length > 0 ? (
+              <div className="flex flex-col gap-0.5">
+                {feesQueue.filter(f => Number(f.waiverAmount) > 0 || Number(f.penaltyAmount) > 0).slice(0, 5).map(fee => (
+                  <div key={fee.id} className="flex justify-between items-center p-2 rounded-lg hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600">
+                        {fee.student?.user?.name?.charAt(0) || '?'}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{fee.student?.user?.name || 'Unknown'}</p>
+                        <p className="text-[10px] text-slate-500">
+                          {Number(fee.penaltyAmount) > 0 && <span className="text-rose-500">Penalty: {formatCurrency(fee.penaltyAmount)} </span>}
+                          {Number(fee.waiverAmount) > 0 && <span className="text-emerald-500">Waiver: {formatCurrency(fee.waiverAmount)}</span>}
+                        </p>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="py-8 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">No collections yet</div>
+              <div className="py-8 text-center text-slate-400 text-xs">No active adjustments!</div>
+            )}
+          </div>
+
+          {/* Recent Collections */}
+          <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm min-h-[300px]">
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2"><Clock className="w-3.5 h-3.5" /> Recent Collections</h3>
+
+            {txnsLoading ? (
+              <div className="py-8 flex justify-center"><Loader2 className="w-4 h-4 animate-spin text-slate-300" /></div>
+            ) : todayTransactions.length > 0 ? (
+              <div className="flex flex-col gap-0.5">
+                {todayTransactions.slice(0, 5).map(tx => (
+                  <div key={tx.id} className="flex justify-between items-center p-2 rounded-lg hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] text-slate-400 w-12">{new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{tx.studentFee?.student?.user?.name || 'System User'}</p>
+                        <p className="text-[10px] text-slate-500 uppercase">{tx.method} • {tx.status}</p>
+                      </div>
+                    </div>
+                    <span className="text-sm font-mono font-medium text-slate-900">{formatCurrency(tx.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-slate-400 text-xs">No collections yet</div>
             )}
           </div>
 
@@ -786,27 +847,11 @@ export default function AccountantDashboard() {
         </div>
       )}
 
-      {/* ──────────────────────────────────────────────────────── */}
-      {/* FLOATING PROGRESS WIDGET */}
-      {/* ──────────────────────────────────────────────────────── */}
-      <div className="fixed bottom-6 right-6 bg-slate-900 text-white p-5 rounded-2xl shadow-2xl flex flex-col gap-2 min-w-[250px] z-50 border border-slate-700 animate-in slide-in-from-bottom-8 duration-500">
-        <div className="flex justify-between items-end mb-1">
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Today's Progress</span>
-          <span className="text-xs font-black">{completedTodayCount} / {totalPendingStudents}</span>
-        </div>
-        
-        {/* ASCII-style progress bar */}
-        <div className="font-mono text-sm tracking-widest text-emerald-400">
-          {'█'.repeat(Math.floor(progressPercent / 10))}
-          <span className="text-slate-700">{'▒'.repeat(10 - Math.floor(progressPercent / 10))}</span>
-        </div>
-        
-        <p className="text-[9px] font-bold text-slate-500 text-center mt-1 uppercase tracking-widest">Students Completed</p>
-      </div>
+
 
       {/* PRINT-ONLY RECEIPT (Hidden in UI, rendered for window.print) */}
       {printReceiptData && createPortal(
-        <div className="print-only fixed inset-0 z-[10000] bg-white">
+        <div className="print-only absolute top-0 left-0 w-full bg-white z-[10000] min-h-screen">
           <PrintReceipt transaction={printReceiptData} />
         </div>,
         document.body

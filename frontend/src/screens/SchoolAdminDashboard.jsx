@@ -39,7 +39,8 @@ import {
   CreditCard,
   Filter,
   Download,
-  UploadCloud
+  UploadCloud,
+  Save
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -69,13 +70,15 @@ export default function SchoolAdminDashboard() {
   // Form States - Fee Type
   const [typeName, setTypeName] = useState('');
   const [typeDesc, setTypeDesc] = useState('');
+  const [typeAmount, setTypeAmount] = useState('');
   const [typeRecurring, setTypeRecurring] = useState(false);
+  const [typeRecurringInterval, setTypeRecurringInterval] = useState('');
+  const [typeVariable, setTypeVariable] = useState(false);
+  const [typeDueDays, setTypeDueDays] = useState('30');
 
   // Form States - Fee Structure
-  const [fsType, setFsType] = useState('');
+  const [fsTypes, setFsTypes] = useState([]);
   const [fsClass, setFsClass] = useState('');
-  const [fsAmount, setFsAmount] = useState('');
-  const [fsDueDate, setFsDueDate] = useState('');
   const [fsAcademicYear, setFsAcademicYear] = useState('2026-2027');
 
   // Form States - Invite Accountant
@@ -107,6 +110,7 @@ export default function SchoolAdminDashboard() {
   const [stGuardian, setStGuardian] = useState('');
   const [stGPhone, setStGPhone] = useState('');
   const [stDob, setStDob] = useState('');
+  const [stOptedVariableFeeIds, setStOptedVariableFeeIds] = useState([]);
   const [stGender, setStGender] = useState('');
   const [stBloodGroup, setStBloodGroup] = useState('');
   const [stAddress, setStAddress] = useState('');
@@ -114,6 +118,8 @@ export default function SchoolAdminDashboard() {
   const [stExtracurricular, setStExtracurricular] = useState('');
   const [stGEmail, setStGEmail] = useState('');
   const [stEmergency, setStEmergency] = useState('');
+  const [stAdmissionDate, setStAdmissionDate] = useState('');
+  const [editingStudentId, setEditingStudentId] = useState(null);
 
   // Form States - Apply Waiver / Penalty Dialog
   const [selectedFeeId, setSelectedFeeId] = useState('');
@@ -183,7 +189,7 @@ export default function SchoolAdminDashboard() {
 
   const { data: unpaidFees } = useQuery({
     queryKey: ['unpaidFeesList', studentSearch, selectedClassFilter],
-    queryFn: () => api.get(`/accountant/student-fees?status=UNPAID&search=${studentSearch}&class=${selectedClassFilter}`),
+    queryFn: () => api.get(`/accountant/student-fees?status=UNPAID,PARTIAL&search=${studentSearch}&class=${selectedClassFilter}`),
   });
 
   const lastMonthCollection = React.useMemo(() => {
@@ -195,6 +201,11 @@ export default function SchoolAdminDashboard() {
     if (!metrics?.totalExpected) return 0;
     return Math.round((metrics.totalCollected / metrics.totalExpected) * 100);
   }, [metrics?.totalExpected, metrics?.totalCollected]);
+
+  const availableVariableFees = React.useMemo(() => {
+    if (!stClass || !structures) return [];
+    return structures.filter(s => s.class === stClass && s.feeType?.isVariable).map(s => s.feeType);
+  }, [stClass, structures]);
 
   const outstandingByMonth = React.useMemo(() => {
     if (!unpaidFees) return [];
@@ -219,7 +230,25 @@ export default function SchoolAdminDashboard() {
     onSuccess: () => {
       setTypeName('');
       setTypeDesc('');
+      setTypeAmount('');
       setTypeRecurring(false);
+      setTypeRecurringInterval('');
+      setTypeVariable(false);
+      setTypeDueDays('30');
+      queryClient.invalidateQueries({ queryKey: ['schoolFeeTypes'] });
+    },
+  });
+
+  const updateFeeTypeMutation = useMutation({
+    mutationFn: ({ id, ...payload }) => api.patch(`/school-admin/fee-types/${id}`, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schoolFeeTypes'] });
+    },
+  });
+
+  const deleteFeeTypeMutation = useMutation({
+    mutationFn: (id) => api.delete(`/school-admin/fee-types/${id}`),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schoolFeeTypes'] });
     },
   });
@@ -227,10 +256,8 @@ export default function SchoolAdminDashboard() {
   const createFeeStructureMutation = useMutation({
     mutationFn: (payload) => api.post('/school-admin/fee-structures', payload),
     onSuccess: () => {
-      setFsType('');
+      setFsTypes([]);
       setFsClass('');
-      setFsAmount('');
-      setFsDueDate('');
       queryClient.invalidateQueries({ queryKey: ['schoolFeeStructures'] });
       queryClient.invalidateQueries({ queryKey: ['schoolMetrics'] });
       queryClient.invalidateQueries({ queryKey: ['schoolStudents'] });
@@ -256,7 +283,48 @@ export default function SchoolAdminDashboard() {
       setStExtracurricular('');
       setStGEmail('');
       setStEmergency('');
+      setStAdmissionDate('');
       setActiveTab('students-all');
+      queryClient.invalidateQueries({ queryKey: ['schoolStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['schoolMetrics'] });
+    },
+    onError: (err) => {
+      alert(err.message || 'Failed to register student');
+    }
+  });
+
+  const updateStudentMutation = useMutation({
+    mutationFn: ({ id, payload }) => api.patch(`/school-admin/students/${id}`, payload),
+    onSuccess: () => {
+      setEditingStudentId(null);
+      setStName('');
+      setStEmail('');
+      setStPhone('');
+      setStRoll('');
+      setStClass('');
+      setStSection('A');
+      setStGuardian('');
+      setStGPhone('');
+      setStDob('');
+      setStGender('');
+      setStBloodGroup('');
+      setStAddress('');
+      setStPreviousSchool('');
+      setStExtracurricular('');
+      setStGEmail('');
+      setStEmergency('');
+      setActiveTab('students-all');
+      queryClient.invalidateQueries({ queryKey: ['schoolStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['schoolMetrics'] });
+    },
+    onError: (err) => {
+      alert(err.message || 'Failed to update student');
+    }
+  });
+
+  const deleteStudentMutation = useMutation({
+    mutationFn: (id) => api.delete(`/school-admin/students/${id}`),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schoolStudents'] });
       queryClient.invalidateQueries({ queryKey: ['schoolMetrics'] });
     },
@@ -316,18 +384,24 @@ export default function SchoolAdminDashboard() {
   // ----------------------------------------------------
   const handleCreateFeeType = (e) => {
     e.preventDefault();
-    if (!typeName) return;
-    createFeeTypeMutation.mutate({ name: typeName, description: typeDesc, isRecurring: typeRecurring });
+    if (!typeName || !typeAmount) return;
+    createFeeTypeMutation.mutate({ 
+      name: typeName, 
+      description: typeDesc, 
+      amount: typeAmount, 
+      isRecurring: typeRecurring,
+      recurringIntervalDays: typeRecurringInterval,
+      isVariable: typeVariable,
+      dueDays: typeDueDays
+    });
   };
 
   const handleCreateFeeStructure = (e) => {
     e.preventDefault();
-    if (!fsType || !fsClass || !fsAmount || !fsDueDate) return;
+    if (fsTypes.length === 0 || !fsClass) return;
     createFeeStructureMutation.mutate({
-      feeTypeId: fsType,
+      feeTypeIds: fsTypes,
       class: fsClass,
-      amount: fsAmount,
-      dueDate: fsDueDate,
       academicYear: fsAcademicYear,
     });
   };
@@ -335,7 +409,8 @@ export default function SchoolAdminDashboard() {
   const handleCreateStudent = (e) => {
     e.preventDefault();
     if (!stName || !stEmail || !stRoll || !stClass || !stGuardian || !stGPhone) return;
-    createStudentMutation.mutate({
+
+    const payload = {
       name: stName,
       email: stEmail,
       phone: stPhone,
@@ -352,7 +427,60 @@ export default function SchoolAdminDashboard() {
       extracurricular: stExtracurricular || undefined,
       guardianEmail: stGEmail || undefined,
       emergencyContact: stEmergency || undefined,
-    });
+      admissionDate: stAdmissionDate || undefined,
+      optedVariableFeeIds: stOptedVariableFeeIds,
+    };
+
+    if (editingStudentId) {
+      updateStudentMutation.mutate({ id: editingStudentId, payload });
+    } else {
+      createStudentMutation.mutate(payload);
+    }
+  };
+
+  const handleEditStudentClick = (st) => {
+    setEditingStudentId(st.id);
+    setStName(st.user?.name || '');
+    setStEmail(st.user?.email || '');
+    setStPhone(st.user?.phone || '');
+    setStRoll(st.rollNumber || '');
+    setStClass(st.class || '');
+    setStSection(st.section || 'A');
+    setStGuardian(st.guardianName || '');
+    setStGPhone(st.guardianPhone || '');
+    
+    // Format date string for input type="date"
+    const dob = st.dateOfBirth ? new Date(st.dateOfBirth).toISOString().split('T')[0] : '';
+    setStDob(dob);
+    
+    const admDate = st.admissionDate ? new Date(st.admissionDate).toISOString().split('T')[0] : '';
+    setStAdmissionDate(admDate);
+    
+    setStGender(st.gender || '');
+    setStBloodGroup(st.bloodGroup || '');
+    setStAddress(st.address || '');
+    setStPreviousSchool(st.previousSchool || '');
+    setStExtracurricular(st.extracurricular || '');
+    setStGEmail(st.guardianEmail || '');
+    setStEmergency(st.emergencyContact || '');
+    
+    // Extract assigned variable fees that are NOT paid
+    // Wait, the requirement says "if i paid fees... do not show it to me in again"
+    // So if we include paid fees here, they would show as checked (or they wouldn't show and get removed).
+    // The user's request: "if i paid fees... do not show it to me in again in the additional fees (variable)"
+    // We should include ALL assigned variable fees in state. The rendering logic will hide the paid ones.
+    const assignedVariableFees = st.studentFees
+      ?.filter(f => f.feeStructure?.feeType?.isVariable)
+      .map(f => f.feeStructure.feeType.id) || [];
+    setStOptedVariableFeeIds(assignedVariableFees);
+    
+    setActiveTab('students-add');
+  };
+
+  const handleDeleteStudent = (id) => {
+    if (window.confirm("Are you sure you want to delete this student? This action cannot be undone.")) {
+      deleteStudentMutation.mutate(id);
+    }
   };
 
   const handleInviteAccountant = (e) => {
@@ -811,7 +939,7 @@ export default function SchoolAdminDashboard() {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="glass-card rounded-2xl p-5 border border-white/40 shadow-sm flex items-center gap-4 hover:-translate-y-1 transition-transform">
                 <div className="w-12 h-12 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary">
                   <Users className="w-6 h-6" />
@@ -828,15 +956,6 @@ export default function SchoolAdminDashboard() {
                 <div>
                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Students</div>
                   <div className="text-2xl font-black text-slate-800">{students?.length || 0}</div>
-                </div>
-              </div>
-              <div className="glass-card rounded-2xl p-5 border border-white/40 shadow-sm flex items-center gap-4 hover:-translate-y-1 transition-transform">
-                <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600">
-                  <Sparkles className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Newly Added</div>
-                  <div className="text-2xl font-black text-slate-800">0</div>
                 </div>
               </div>
               <div className="glass-card rounded-2xl p-5 border border-white/40 shadow-sm flex items-center gap-4 hover:-translate-y-1 transition-transform">
@@ -883,10 +1002,6 @@ export default function SchoolAdminDashboard() {
                 <button className="md:hidden bg-white border border-slate-200 text-slate-600 rounded-xl p-2 shadow-sm">
                   <Filter className="w-4 h-4" />
                 </button>
-                <button className="flex-1 md:flex-none bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl px-4 py-2 text-xs font-bold shadow-sm transition-colors flex items-center justify-center gap-2">
-                  <Download className="w-4 h-4" />
-                  Export
-                </button>
               </div>
             </div>
 
@@ -902,10 +1017,7 @@ export default function SchoolAdminDashboard() {
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-slate-200/80 bg-slate-50/50 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                        <th className="py-4 pl-6 pr-3 w-10">
-                          <input type="checkbox" className="rounded border-slate-300 text-brand-primary focus:ring-brand-primary cursor-pointer" />
-                        </th>
-                        <th className="py-4 px-3">Roll No</th>
+                        <th className="py-4 pl-6 px-3">Roll No</th>
                         <th className="py-4 px-3">Student</th>
                         <th className="py-4 px-3">Class</th>
                         <th className="py-4 px-3">Guardian</th>
@@ -917,12 +1029,15 @@ export default function SchoolAdminDashboard() {
                     <tbody>
                       {students.map((st) => {
                         const totalAssigned = st.studentFees?.reduce((sum, f) => sum + Number(f.amountDue), 0) || 0;
+                        const hasUnpaidMandatory = st.studentFees?.some(f => f.feeStructure?.feeType?.isVariable === false && f.status !== 'PAID');
+                        
                         return (
-                          <tr key={st.id} className="border-b border-slate-100 last:border-0 hover:bg-brand-primary/5 transition-colors group">
-                            <td className="py-4 pl-6 pr-3">
-                              <input type="checkbox" className="rounded border-slate-300 text-brand-primary focus:ring-brand-primary cursor-pointer" />
-                            </td>
-                            <td className="py-4 px-3 font-mono text-slate-500">{st.rollNumber}</td>
+                          <tr 
+                            key={st.id} 
+                            onClick={() => { setProfileStudentTab('overview'); setProfileStudentId(st.id); }}
+                            className="border-b border-slate-100 last:border-0 hover:bg-brand-primary/5 transition-colors group cursor-pointer"
+                          >
+                            <td className="py-4 pl-6 px-3 font-mono text-slate-500">{st.rollNumber}</td>
                             <td className="py-4 px-3">
                               <div className="font-extrabold text-slate-800">{st.user.name}</div>
                               <div className="text-[10px] text-slate-500 mt-0.5">{st.user.email}</div>
@@ -939,29 +1054,34 @@ export default function SchoolAdminDashboard() {
                             </td>
                             <td className="py-4 px-3 font-black text-slate-700">{formatCurrency(totalAssigned)}</td>
                             <td className="py-4 px-3">
-                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 text-[10px] font-bold border border-emerald-100">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                Active
-                              </span>
+                              {hasUnpaidMandatory ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-amber-50 text-amber-600 text-[10px] font-bold border border-amber-100">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                  Pending
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 text-[10px] font-bold border border-emerald-100">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                  Active
+                                </span>
+                              )}
                             </td>
                             <td className="py-4 pr-6 pl-3">
                               <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button 
-                                  onClick={() => { setProfileStudentTab('overview'); setProfileStudentId(st.id); }}
+                                  onClick={(e) => { e.stopPropagation(); handleEditStudentClick(st); }}
                                   className="p-1.5 text-slate-400 hover:text-brand-primary hover:bg-brand-primary/10 rounded-lg transition-colors"
-                                  title="View Profile"
+                                  title="Edit Student"
                                 >
-                                  <Eye className="w-4 h-4" />
+                                  <Edit2 className="w-4 h-4" />
                                 </button>
                                 <button 
-                                  onClick={() => { setProfileStudentTab('fees'); setProfileStudentId(st.id); }}
-                                  className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" 
-                                  title="Fee Records"
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteStudent(st.id); }}
+                                  disabled={deleteStudentMutation.isPending}
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" 
+                                  title="Delete Student"
                                 >
-                                  <CreditCard className="w-4 h-4" />
-                                </button>
-                                <button className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" title="More Options">
-                                  <MoreVertical className="w-4 h-4" />
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               </div>
                             </td>
@@ -1002,8 +1122,12 @@ export default function SchoolAdminDashboard() {
               >
                 <ChevronRight className="w-4 h-4 rotate-180" /> Back to Students
               </button>
-              <h2 className="text-2xl font-black text-slate-800 tracking-tight">Add New Student</h2>
-              <p className="text-xs font-medium text-slate-500 mt-1">Register a new student profile into the system.</p>
+              <h2 className="text-xl font-black text-slate-800 tracking-tight">
+                    {editingStudentId ? 'Edit Student' : 'Student Admission Form'}
+                  </h2>
+                  <p className="text-xs font-bold text-slate-400 mt-1">
+                    {editingStudentId ? 'Update student records and fee preferences.' : 'Register a new student and assign fee structures.'}
+                  </p>
             </div>
             
             <div className="glass-card rounded-[24px] p-8 border border-white/40 shadow-premium">
@@ -1086,6 +1210,15 @@ export default function SchoolAdminDashboard() {
                         type="date"
                         value={stDob}
                         onChange={(e) => setStDob(e.target.value)}
+                        className="w-full glass-input text-xs py-3 px-4"
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1.5 uppercase tracking-wide">Admission Date</label>
+                      <input
+                        type="date"
+                        value={stAdmissionDate}
+                        onChange={(e) => setStAdmissionDate(e.target.value)}
                         className="w-full glass-input text-xs py-3 px-4"
                       />
                     </div>
@@ -1196,7 +1329,53 @@ export default function SchoolAdminDashboard() {
                   </div>
                 </div>
 
-                <div className="pt-4 flex justify-end gap-3">
+                {/* Variable Fees Section */}
+                {(() => {
+                  const editingStudent = students?.find(s => s.id === editingStudentId);
+                  
+                  // Paid fees for this student, to be excluded from the checkboxes
+                  const paidVariableFeeIds = editingStudent?.studentFees
+                    ?.filter(f => f.feeStructure?.feeType?.isVariable && f.status === 'PAID')
+                    .map(f => f.feeStructure.feeType.id) || [];
+                    
+                  const visibleVariableFees = availableVariableFees.filter(fee => !paidVariableFeeIds.includes(fee.id));
+
+                  return visibleVariableFees.length > 0 && (
+                    <div className="pt-6 border-t border-slate-200/60 mb-8">
+                      <h3 className="text-sm font-black text-slate-800 mb-4 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-brand-primary" />
+                        Optional Variable Fees
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {visibleVariableFees.map(fee => (
+                          <label key={fee.id} className={`flex items-start gap-3 cursor-pointer p-4 rounded-xl border transition-colors ${stOptedVariableFeeIds.includes(fee.id) ? 'border-amber-400 bg-amber-50/30' : 'border-slate-200/60 bg-slate-50/50 hover:bg-slate-50'}`}>
+                            <div className="pt-0.5">
+                              <input 
+                                type="checkbox"
+                                checked={stOptedVariableFeeIds.includes(fee.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setStOptedVariableFeeIds(prev => [...prev, fee.id]);
+                                  } else {
+                                    setStOptedVariableFeeIds(prev => prev.filter(id => id !== fee.id));
+                                  }
+                                }}
+                                className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
+                              />
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-slate-700">{fee.name}</div>
+                              <div className="text-[10px] text-slate-500 mt-1 line-clamp-2">{fee.description}</div>
+                              <div className="text-xs font-black text-slate-800 mt-2">{formatCurrency(fee.amount)}</div>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div className="pt-8 flex justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => setActiveTab('students-all')}
@@ -1204,19 +1383,9 @@ export default function SchoolAdminDashboard() {
                   >
                     Cancel
                   </button>
-                  <button
-                    type="submit"
-                    disabled={createStudentMutation.isPending}
-                    className="glass-btn-primary flex items-center justify-center gap-2 px-8 py-3 text-xs"
-                  >
-                    {createStudentMutation.isPending ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      'Register Student'
-                    )}
+                  <button type="submit" disabled={createStudentMutation.isPending || updateStudentMutation.isPending} className="px-6 py-3 bg-brand-primary hover:bg-brand-secondary text-white text-xs font-bold rounded-xl shadow-lg shadow-brand-primary/20 transition-all active:scale-95 flex items-center gap-2">
+                    {editingStudentId ? <Edit2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                    {editingStudentId ? (updateStudentMutation.isPending ? 'Updating...' : 'Update Student') : (createStudentMutation.isPending ? 'Saving...' : 'Register Student')}
                   </button>
                 </div>
               </form>
@@ -1375,13 +1544,17 @@ export default function SchoolAdminDashboard() {
             typeName={typeName} setTypeName={setTypeName}
             typeDesc={typeDesc} setTypeDesc={setTypeDesc}
             typeRecurring={typeRecurring} setTypeRecurring={setTypeRecurring}
+            typeRecurringInterval={typeRecurringInterval} setTypeRecurringInterval={setTypeRecurringInterval}
+            typeVariable={typeVariable} setTypeVariable={setTypeVariable}
+            typeDueDays={typeDueDays} setTypeDueDays={setTypeDueDays}
+            typeAmount={typeAmount} setTypeAmount={setTypeAmount}
             handleCreateFeeType={handleCreateFeeType}
             createFeeTypeMutation={createFeeTypeMutation}
-            fsType={fsType} setFsType={setFsType}
+            updateFeeTypeMutation={updateFeeTypeMutation}
+            deleteFeeTypeMutation={deleteFeeTypeMutation}
+            fsTypes={fsTypes} setFsTypes={setFsTypes}
             fsClass={fsClass} setFsClass={setFsClass}
             fsAcademicYear={fsAcademicYear} setFsAcademicYear={setFsAcademicYear}
-            fsAmount={fsAmount} setFsAmount={setFsAmount}
-            fsDueDate={fsDueDate} setFsDueDate={setFsDueDate}
             handleCreateFeeStructure={handleCreateFeeStructure}
             createFeeStructureMutation={createFeeStructureMutation}
           />
@@ -1677,7 +1850,13 @@ export default function SchoolAdminDashboard() {
       {profileStudentId && (() => {
         const student = students?.find(s => s.id === profileStudentId);
         if (!student) return null;
-        return <StudentProfile360 student={student} onClose={() => setProfileStudentId(null)} initialTab={profileStudentTab} />;
+        return <StudentProfile360 
+          student={student} 
+          onClose={() => setProfileStudentId(null)} 
+          initialTab={profileStudentTab} 
+          onEdit={() => { setProfileStudentId(null); handleEditStudentClick(student); }}
+          onDelete={(id) => { setProfileStudentId(null); handleDeleteStudent(id); }}
+        />;
       })()}
 
       {/* MESSAGES VIEW */}

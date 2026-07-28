@@ -16,7 +16,11 @@ export async function getStudentFeesQueue(req, res) {
     }
 
     if (status) {
-      whereClause.status = status;
+      if (status.includes(',')) {
+        whereClause.status = { in: status.split(',') };
+      } else {
+        whereClause.status = status;
+      }
     }
 
     if (search) {
@@ -130,6 +134,69 @@ export async function recordManualTransaction(req, res) {
   } catch (error) {
     console.error('Record transaction error:', error);
     return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+export async function recordBulkTransaction(req, res) {
+  const { fees, method, chequeNumber, chequeDate } = req.body;
+  const schoolId = req.schoolId;
+  const recordedBy = req.user.id;
+
+  if (!fees || !Array.isArray(fees) || fees.length === 0 || !method) {
+    return res.status(400).json({ error: 'Valid fees array and method are required' });
+  }
+
+  try {
+    const transactions = await prisma.$transaction(async (tx) => {
+      const receiptUrl = `TXN-BULK-${Math.floor(100000 + Math.random() * 900000)}`;
+      const txnStatus = method === 'CHEQUE' ? 'PENDING' : 'SUCCESS';
+      const createdTxns = [];
+
+      for (const fee of fees) {
+        const studentFee = await tx.studentFee.findFirst({
+          where: { id: fee.studentFeeId, schoolId },
+        });
+
+        if (!studentFee) throw new Error(`Fee record not found for ID: ${fee.studentFeeId}`);
+
+        const amt = parseFloat(fee.amount);
+        if (amt <= 0) throw new Error(`Amount must be positive for fee ID: ${fee.studentFeeId}`);
+
+        const txn = await tx.transaction.create({
+          data: {
+            schoolId,
+            studentFeeId: fee.studentFeeId,
+            amount: amt,
+            method,
+            status: txnStatus,
+            chequeNumber: method === 'CHEQUE' ? chequeNumber : null,
+            chequeDate: method === 'CHEQUE' && chequeDate ? new Date(chequeDate) : null,
+            recordedBy,
+            receiptUrl,
+          },
+        });
+        createdTxns.push(txn);
+
+        if (method !== 'CHEQUE') {
+          const newPaid = Number(studentFee.amountPaid) + amt;
+          const required = Number(studentFee.amountDue) + Number(studentFee.penaltyAmount) - Number(studentFee.waiverAmount);
+          const status = newPaid >= required ? 'PAID' : 'PARTIAL';
+
+          await tx.studentFee.update({
+            where: { id: fee.studentFeeId },
+            data: { amountPaid: newPaid, status },
+          });
+        }
+      }
+      return createdTxns;
+    });
+
+    return res.status(201).json({
+      message: method === 'CHEQUE' ? 'Bulk cheque transaction recorded, pending reconciliation' : 'Bulk payment recorded successfully',
+      transactions,
+    });
+  } catch (error) {
+    console.error('Record bulk transaction error:', error);
+    return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 }
 

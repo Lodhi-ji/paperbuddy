@@ -123,7 +123,11 @@ model FeeType {
   school      School   @relation(fields: [schoolId], references: [id])
   name        String   // e.g. "Tuition Fee", "Bus Fee"
   description String?
+  amount      Decimal  @default(0.00) @db.Decimal(10, 2)
+  dueDays     Int      @default(30)
   isRecurring Boolean  @default(false)
+  recurringIntervalDays Int?
+  isVariable  Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   // Relations
@@ -139,8 +143,6 @@ model FeeStructure {
   feeTypeId    String
   feeType      FeeType      @relation(fields: [feeTypeId], references: [id])
   class        String       // Applied to this grade
-  amount       Decimal      @db.Decimal(10, 2)
-  dueDate      DateTime
   academicYear String       // e.g. "2026-2027"
 
   // Relations
@@ -164,12 +166,15 @@ model StudentFee {
   waiverReason   String?
   waiverApprovedBy String?
   penaltyAmount  Decimal      @default(0.00) @db.Decimal(10, 2)
+  periodicPenaltyAmount Decimal? @db.Decimal(10, 2)
+  periodicPenaltyDays   Int?
+  nextPenaltyDate       DateTime?
   dueDate        DateTime
+  billingCycleStart DateTime @default(now())
 
   // Relations
   transactions   Transaction[]
 
-  @@unique([studentId, feeStructureId]) // Prevents duplicate fee assignments
   @@index([schoolId])
   @@index([schoolId, status]) // Composite index for defaulter tracking
 }

@@ -26,7 +26,13 @@ import {
   Receipt,
   FileSpreadsheet,
   UploadCloud,
-  Bell
+  Bell,
+  CreditCard,
+  Banknote,
+  Smartphone,
+  Landmark,
+  AlertTriangle,
+  ShieldCheck
 } from 'lucide-react';
 import { 
   BarChart,
@@ -38,6 +44,10 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 import MessagesView from './MessagesView';
+import PenaltyModal from './PenaltyModal';
+import RecordPaymentModal from './RecordPaymentModal';
+import SendReminderModal from './SendReminderModal';
+import ReceiptModal from './ReceiptModal';
 
 const formatCurrencyLegacy = (amount) => {
   return new Intl.NumberFormat('en-IN', {
@@ -47,22 +57,33 @@ const formatCurrencyLegacy = (amount) => {
   }).format(amount);
 };
 
-export default function StudentProfile360({ student, onClose, initialTab = 'overview' }) {
+export default function StudentProfile360({ student, onClose, onEdit, onDelete, initialTab = 'overview' }) {
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [selectedPenaltyFee, setSelectedPenaltyFee] = useState(null);
+  const [selectedPaymentFee, setSelectedPaymentFee] = useState(null); // Can now be an array or single object
+  const [selectedReminderFee, setSelectedReminderFee] = useState(null);
+  const [selectedReceiptFee, setSelectedReceiptFee] = useState(null);
+  const [selectedFeesForBulk, setSelectedFeesForBulk] = useState([]);
+  const [isBulkMode, setIsBulkMode] = useState(false);
+
+  const handleReceiptClick = (fee) => {
+    if (fee.status === 'UNPAID') {
+      alert('Fees not paid till now');
+    } else {
+      setSelectedReceiptFee(fee);
+    }
+  };
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
-    { id: 'academic', label: 'Academic' },
     { id: 'fees', label: 'Fees & Payments' },
-    { id: 'attendance', label: 'Attendance' },
-    { id: 'documents', label: 'Documents' },
-    { id: 'communication', label: 'Communication' },
-    { id: 'activity', label: 'Activity Log' }
+    { id: 'communication', label: 'Communication' }
   ];
 
   let totalBilled = 0;
   let totalPaid = 0;
   let totalOutstanding = 0;
+  let hasUnpaidMandatory = false;
   
   if (student?.studentFees) {
     student.studentFees.forEach(f => {
@@ -74,10 +95,13 @@ export default function StudentProfile360({ student, onClose, initialTab = 'over
       totalBilled += due + penalty;
       totalPaid += paid;
       totalOutstanding += Math.max(0, (due + penalty) - (paid + waiver));
+      
+      if (f.feeStructure?.feeType?.isVariable === false && f.status !== 'PAID') {
+        hasUnpaidMandatory = true;
+      }
     });
   }
 
-  const healthScore = totalBilled > 0 ? Math.round(((totalBilled - totalOutstanding) / totalBilled) * 100) : null;
 
   return (
     <div className="fixed inset-0 bg-slate-50 z-[100] overflow-y-auto no-scrollbar animate-in slide-in-from-right-8 duration-300">
@@ -93,22 +117,44 @@ export default function StudentProfile360({ student, onClose, initialTab = 'over
           </button>
 
           <div className="flex flex-col xl:flex-row gap-6 justify-between items-start">
-            <div className="flex items-start gap-6">
+            <div className="flex items-start gap-6 w-full">
               {/* Profile Image */}
-              <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-indigo-50 to-brand-primary/10 border-2 border-white shadow-lg flex items-center justify-center text-4xl font-black text-brand-primary">
+              <div className="w-32 h-32 shrink-0 rounded-3xl bg-gradient-to-br from-indigo-50 to-brand-primary/10 border-2 border-white shadow-lg flex items-center justify-center text-4xl font-black text-brand-primary">
                 {student.user?.name ? student.user.name.substring(0, 2).toUpperCase() : 'ST'}
               </div>
               
-              <div className="pt-2">
-                <div className="flex items-center gap-4 mb-2">
-                  <h1 className="text-4xl font-black text-slate-800 tracking-tight">{student.user?.name}</h1>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-bold border border-emerald-100">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                    Active
-                  </span>
+              <div className="pt-2 flex-1 w-full">
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
+                  <div className="flex items-center gap-4">
+                    <h1 className="text-4xl font-black text-slate-800 tracking-tight">{student.user?.name}</h1>
+                    {hasUnpaidMandatory ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-600 text-xs font-bold border border-amber-100">
+                        <div className="w-2 h-2 rounded-full bg-amber-500" />
+                        Pending
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-bold border border-emerald-100">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2">
+                    <button onClick={onEdit} className="p-2.5 bg-white border border-slate-200 text-slate-500 hover:text-brand-primary rounded-xl shadow-sm transition-colors" title="Edit Student">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button className="p-2.5 bg-white border border-slate-200 text-slate-500 hover:text-brand-primary rounded-xl shadow-sm transition-colors" title="Export Data">
+                      <Download className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => { if (onDelete) onDelete(student.id); }} className="p-2.5 bg-white border border-slate-200 text-slate-500 hover:text-rose-600 rounded-xl shadow-sm transition-colors" title="Delete Student">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mt-4">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-4 mt-4">
                   <div className="flex flex-col">
                     <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Student ID</span>
                     <span className="text-sm font-mono font-bold text-slate-700">{student.id.substring(0,8).toUpperCase()}</span>
@@ -122,64 +168,18 @@ export default function StudentProfile360({ student, onClose, initialTab = 'over
                     <span className="text-sm font-mono font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">{student.rollNumber}</span>
                   </div>
                   <div className="flex flex-col">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Guardian</span>
+                    <span className="text-sm font-bold text-slate-700">{student.guardianName || 'N/A'}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Contact</span>
+                    <span className="text-sm font-medium text-slate-600">{student.guardianPhone || 'N/A'}</span>
+                  </div>
+                  <div className="flex flex-col">
                     <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Email</span>
                     <span className="text-sm font-medium text-slate-600">{student.user?.email}</span>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Right Side: Health Score & Actions */}
-            <div className="flex flex-col gap-4 min-w-[320px]">
-              <div className="glass-card p-5 rounded-2xl border border-white/40 shadow-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-10 -mt-10 transition-transform group-hover:scale-150" />
-                <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-emerald-500" /> Student Health Score
-                </h3>
-                
-                <div className="flex items-end gap-3 mb-4">
-                  <div className="text-4xl font-black text-slate-800">{healthScore !== null ? `${healthScore}%` : 'N/A'}</div>
-                  {healthScore !== null && (
-                    <div className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md mb-1">
-                      {healthScore > 90 ? 'Excellent' : 'Healthy'}
-                    </div>
-                  )}
-                </div>
-                
-                <div className="space-y-2 text-xs font-bold text-slate-500 relative z-10">
-                  <div className="flex justify-between items-center">
-                    <span>Attendance</span>
-                    <span className="text-slate-400 flex items-center gap-1">Not Recorded</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Fee Status</span>
-                    {totalOutstanding > 0 ? (
-                      <span className="text-amber-500 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> Partial</span>
-                    ) : (
-                      <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Clear</span>
-                    )}
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Academic</span>
-                    <span className="text-slate-400 flex items-center gap-1">No Data</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Documents</span>
-                    <span className="text-slate-400 flex items-center gap-1">Pending</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <button className="p-2.5 bg-white border border-slate-200 text-slate-500 hover:text-brand-primary rounded-xl shadow-sm transition-colors">
-                  <Edit2 className="w-4 h-4" />
-                </button>
-                <button className="p-2.5 bg-white border border-slate-200 text-slate-500 hover:text-brand-primary rounded-xl shadow-sm transition-colors">
-                  <Download className="w-4 h-4" />
-                </button>
-                <button className="p-2.5 bg-white border border-slate-200 text-slate-500 hover:text-rose-600 rounded-xl shadow-sm transition-colors">
-                  <MoreVertical className="w-4 h-4" />
-                </button>
               </div>
             </div>
           </div>
@@ -256,8 +256,8 @@ export default function StudentProfile360({ student, onClose, initialTab = 'over
                 <div className="space-y-5">
                   <div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Admission Date</div>
-                    <div className="text-xs font-bold text-slate-400 flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-slate-400" /> Not Specified
+                    <div className={`text-xs font-bold flex items-center gap-2 ${student.admissionDate ? 'text-slate-700' : 'text-slate-400'}`}>
+                      <Calendar className="w-4 h-4 text-slate-400" /> {student.admissionDate ? new Date(student.admissionDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Not Specified'}
                     </div>
                   </div>
                   <div>
@@ -359,55 +359,102 @@ export default function StudentProfile360({ student, onClose, initialTab = 'over
                 </div>
               </div>
 
-              {/* Quick Actions */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <button className="glass-card rounded-2xl p-5 border border-white/40 shadow-sm flex flex-col items-center justify-center gap-3 hover:-translate-y-1 hover:shadow-md hover:border-brand-primary/30 transition-all group">
-                  <div className="w-10 h-10 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary group-hover:scale-110 transition-transform">
-                    <Receipt className="w-5 h-5" />
-                  </div>
-                  <span className="text-xs font-bold text-slate-700">Record Payment</span>
-                </button>
-                <button className="glass-card rounded-2xl p-5 border border-white/40 shadow-sm flex flex-col items-center justify-center gap-3 hover:-translate-y-1 hover:shadow-md hover:border-brand-primary/30 transition-all group">
-                  <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
-                    <DownloadCloud className="w-5 h-5" />
-                  </div>
-                  <span className="text-xs font-bold text-slate-700">Download Receipt</span>
-                </button>
-                <button className="glass-card rounded-2xl p-5 border border-white/40 shadow-sm flex flex-col items-center justify-center gap-3 hover:-translate-y-1 hover:shadow-md hover:border-brand-primary/30 transition-all group">
-                  <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
-                    <Bell className="w-5 h-5" />
-                  </div>
-                  <span className="text-xs font-bold text-slate-700">Send Reminder</span>
-                </button>
-                <button onClick={() => setActiveTab('communication')} className="glass-card rounded-2xl p-5 border border-white/40 shadow-sm flex flex-col items-center justify-center gap-3 hover:-translate-y-1 hover:shadow-md hover:border-brand-primary/30 transition-all group">
-                  <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
-                    <MessageSquare className="w-5 h-5" />
-                  </div>
-                  <span className="text-xs font-bold text-slate-700">Message</span>
-                </button>
-              </div>
+
 
               {/* Recent Invoices Table */}
               <div className="glass-card rounded-3xl border border-white/40 shadow-premium overflow-hidden bg-white/50">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white/40">
-                  <h3 className="text-sm font-black text-slate-800">Recent Payments & Fees</h3>
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-sm font-black text-slate-800">Recent Payments & Fees</h3>
+                    {!isBulkMode && (
+                      <button
+                        onClick={() => setIsBulkMode(true)}
+                        className="bg-white border border-slate-200 text-slate-600 hover:text-brand-primary text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow-sm"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Multiple Payments
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isBulkMode && (
+                      <button
+                        onClick={() => {
+                          setIsBulkMode(false);
+                          setSelectedFeesForBulk([]);
+                        }}
+                        className="text-slate-400 hover:text-slate-600 text-xs font-bold px-3 py-2 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    {selectedFeesForBulk.length > 0 && isBulkMode && (
+                      <button
+                        onClick={() => {
+                          const feesToPay = student.studentFees.filter(f => selectedFeesForBulk.includes(f.id));
+                          setSelectedPaymentFee(feesToPay);
+                        }}
+                        className="bg-brand-primary text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-brand-secondary transition-all shadow-md shadow-brand-primary/20 animate-in fade-in"
+                      >
+                        <Receipt className="w-4 h-4" /> Pay Selected ({selectedFeesForBulk.length})
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-slate-200/80 bg-slate-50/50 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                        <th className="py-4 pl-6 pr-3">Due Date</th>
+                        {isBulkMode && (
+                          <th className="py-4 pl-6 pr-2 w-10">
+                            <input 
+                              type="checkbox" 
+                              className="w-4 h-4 rounded text-brand-primary border-slate-300 focus:ring-brand-primary/30"
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedFeesForBulk(student.studentFees.filter(f => f.status !== 'PAID').map(f => f.id));
+                                } else {
+                                  setSelectedFeesForBulk([]);
+                                }
+                              }}
+                              checked={
+                                student.studentFees?.filter(f => f.status !== 'PAID').length > 0 &&
+                                selectedFeesForBulk.length === student.studentFees?.filter(f => f.status !== 'PAID').length
+                              }
+                            />
+                          </th>
+                        )}
+                        <th className={`py-4 px-3 ${!isBulkMode ? 'pl-6' : ''}`}>Due Date</th>
                         <th className="py-4 px-3">Fee Type</th>
                         <th className="py-4 px-3">Amount Billed</th>
                         <th className="py-4 px-3">Amount Paid</th>
                         <th className="py-4 px-3">Status</th>
+                        <th className="py-4 pr-6 pl-3 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {student.studentFees && student.studentFees.map(fee => {
+                        const isSelectable = fee.status !== 'PAID';
                         return (
-                          <tr key={fee.id} className="border-b border-slate-100 last:border-0 hover:bg-white/60 transition-colors">
-                            <td className="py-4 pl-6 pr-3 font-medium text-slate-600">
+                          <tr key={fee.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/80 transition-colors group">
+                            {isBulkMode && (
+                              <td className="py-4 pl-6 pr-2">
+                                {isSelectable && (
+                                  <input 
+                                    type="checkbox" 
+                                    className="w-4 h-4 rounded text-brand-primary border-slate-300 focus:ring-brand-primary/30"
+                                    checked={selectedFeesForBulk.includes(fee.id)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedFeesForBulk([...selectedFeesForBulk, fee.id]);
+                                      } else {
+                                        setSelectedFeesForBulk(selectedFeesForBulk.filter(id => id !== fee.id));
+                                      }
+                                    }}
+                                  />
+                                )}
+                              </td>
+                            )}
+                            <td className={`py-4 px-3 font-medium text-slate-600 ${!isBulkMode ? 'pl-6' : ''}`}>
                               {new Date(fee.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </td>
                             <td className="py-4 px-3 font-bold text-slate-800">{fee.feeStructure.feeType.name}</td>
@@ -421,6 +468,28 @@ export default function StudentProfile360({ student, onClose, initialTab = 'over
                                 {fee.status}
                               </span>
                             </td>
+                            <td className="py-4 pr-6 pl-3">
+                              <div className="flex items-center justify-end gap-2">
+                                {fee.status !== 'PAID' ? (
+                                  <button onClick={() => setSelectedPaymentFee(fee)} className="flex items-center gap-1.5 px-3 py-1.5 text-brand-primary bg-brand-primary/10 hover:bg-brand-primary hover:text-white text-[10px] font-bold rounded-full transition-colors">
+                                    <Receipt className="w-3.5 h-3.5" /> Pay
+                                  </button>
+                                ) : (
+                                  <span className="flex items-center gap-1.5 px-3 py-1.5 text-emerald-600 bg-emerald-50 text-[10px] font-bold rounded-full border border-emerald-100">
+                                    <CheckCircle2 className="w-3.5 h-3.5" /> Fully Paid
+                                  </span>
+                                )}
+                                <button onClick={() => setSelectedPenaltyFee(fee)} className="flex items-center gap-1.5 px-3 py-1.5 text-rose-600 bg-rose-50 hover:bg-rose-600 hover:text-white text-[10px] font-bold rounded-full transition-colors">
+                                  <AlertCircle className="w-3.5 h-3.5" /> Penalty
+                                </button>
+                                <button onClick={() => setSelectedReminderFee(fee)} className="flex items-center gap-1.5 px-3 py-1.5 text-amber-600 bg-amber-50 hover:bg-amber-500 hover:text-white text-[10px] font-bold rounded-full transition-colors">
+                                  <Bell className="w-3.5 h-3.5" /> Remind
+                                </button>
+                                <button onClick={() => handleReceiptClick(fee)} className="flex items-center gap-1.5 px-3 py-1.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white text-[10px] font-bold rounded-full transition-colors">
+                                  <DownloadCloud className="w-3.5 h-3.5" /> Receipt
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         );
                       })}
@@ -433,40 +502,97 @@ export default function StudentProfile360({ student, onClose, initialTab = 'over
                   </table>
                 </div>
               </div>
+
+              {/* Activity Log */}
+              {(() => {
+                const allTxns = (student.studentFees || [])
+                  .flatMap(fee => (fee.transactions || []).map(t => ({ ...t, feeName: fee.feeStructure?.feeType?.name })))
+                  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+                const penaltyEvents = (student.studentFees || [])
+                  .filter(f => Number(f.penaltyAmount) > 0)
+                  .map(f => ({
+                    type: 'penalty',
+                    feeName: f.feeStructure?.feeType?.name,
+                    amount: Number(f.penaltyAmount),
+                    createdAt: f.dueDate,
+                    id: `penalty-${f.id}`
+                  }));
+
+                const waiverEvents = (student.studentFees || [])
+                  .filter(f => Number(f.waiverAmount) > 0)
+                  .map(f => ({
+                    type: 'waiver',
+                    feeName: f.feeStructure?.feeType?.name,
+                    amount: Number(f.waiverAmount),
+                    reason: f.waiverReason,
+                    createdAt: f.dueDate,
+                    id: `waiver-${f.id}`
+                  }));
+
+                const allEvents = [
+                  ...allTxns.map(t => ({ ...t, type: 'payment' })),
+                  ...penaltyEvents,
+                  ...waiverEvents
+                ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+                return (
+                  <div className="glass-card rounded-3xl border border-white/40 shadow-premium overflow-hidden bg-white/50">
+                    <div className="p-6 border-b border-slate-100 bg-white/40 flex items-center justify-between">
+                      <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-brand-primary" /> Activity Log
+                      </h3>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{allEvents.length} Events</span>
+                    </div>
+
+                    {allEvents.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3">
+                          <Activity className="w-5 h-5 text-slate-300" />
+                        </div>
+                        <p className="text-sm font-bold text-slate-500">No activity yet</p>
+                        <p className="text-xs text-slate-400 mt-1">Payment and adjustment events will appear here.</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-slate-50">
+                        {allEvents.map((evt, idx) => {
+                          const isPayment = evt.type === 'payment';
+                          const isPenalty = evt.type === 'penalty';
+                          const iconBg = isPayment ? 'bg-emerald-50 text-emerald-600' : isPenalty ? 'bg-rose-50 text-rose-500' : 'bg-blue-50 text-blue-500';
+                          const icon = isPayment ? (
+                            evt.method === 'UPI' ? <Smartphone className="w-4 h-4" /> :
+                            evt.method === 'CARD' ? <CreditCard className="w-4 h-4" /> :
+                            evt.method === 'CASH' ? <Banknote className="w-4 h-4" /> :
+                            evt.method === 'CHEQUE' ? <Landmark className="w-4 h-4" /> :
+                            <Receipt className="w-4 h-4" />
+                          ) : isPenalty ? <AlertTriangle className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />;
+
+                          const label = isPayment ? `Payment via ${evt.method || 'System'}` : isPenalty ? 'Penalty Applied' : `Waiver${evt.reason ? ` – ${evt.reason}` : ''}`;
+                          const amountColor = isPayment ? 'text-emerald-600' : isPenalty ? 'text-rose-500' : 'text-blue-600';
+                          const amountPrefix = isPayment ? '+' : isPenalty ? '+' : '-';
+
+                          return (
+                            <div key={evt.id || idx} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50/60 transition-colors">
+                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>{icon}</div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-bold text-slate-800">{label}</div>
+                                <div className="text-[10px] font-medium text-slate-400 mt-0.5">{evt.feeName || 'General'}</div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className={`text-sm font-black ${amountColor}`}>{amountPrefix}{formatCurrencyLegacy(evt.amount)}</div>
+                                <div className="text-[10px] font-medium text-slate-400 mt-0.5">
+                                  {new Date(evt.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
-          )}
-
-          {/* ACADEMIC TAB (MOCK) */}
-          {activeTab === 'academic' && (
-             <div className="glass-card rounded-[24px] p-8 border border-white/40 shadow-sm text-center py-32 bg-white/50">
-               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-100 shadow-inner">
-                 <BookOpen className="w-10 h-10 text-slate-300" />
-               </div>
-               <h3 className="text-lg font-black text-slate-700 mb-2">No Academic Records</h3>
-               <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">Academic records will appear here once examinations are graded and published.</p>
-             </div>
-          )}
-
-          {/* DOCUMENTS TAB (MOCK) */}
-          {activeTab === 'documents' && (
-             <div className="glass-card rounded-[24px] p-8 border border-white/40 shadow-sm text-center py-32 bg-white/50">
-               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-100 shadow-inner">
-                 <FileText className="w-10 h-10 text-slate-300" />
-               </div>
-               <h3 className="text-lg font-black text-slate-700 mb-2">No Documents Uploaded</h3>
-               <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">There are currently no documents associated with this student's profile.</p>
-             </div>
-          )}
-
-          {/* ATTENDANCE TAB (MOCK) */}
-          {activeTab === 'attendance' && (
-             <div className="glass-card rounded-[24px] p-8 border border-white/40 shadow-sm text-center py-32 bg-white/50">
-               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-100 shadow-inner">
-                 <Calendar className="w-10 h-10 text-slate-300" />
-               </div>
-               <h3 className="text-lg font-black text-slate-700 mb-2">Attendance Module Coming Soon</h3>
-               <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">This module will provide detailed calendar views, leave requests, and monthly attendance charts.</p>
-             </div>
           )}
 
           {/* COMMUNICATION TAB */}
@@ -475,20 +601,54 @@ export default function StudentProfile360({ student, onClose, initialTab = 'over
                <MessagesView standaloneContactId={student.userId} />
              </div>
           )}
-
-          {/* ACTIVITY LOG TAB (MOCK) */}
-          {activeTab === 'activity' && (
-             <div className="glass-card rounded-[24px] p-8 border border-white/40 shadow-sm text-center py-32 bg-white/50">
-               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-100 shadow-inner">
-                 <Clock className="w-10 h-10 text-slate-300" />
-               </div>
-               <h3 className="text-lg font-black text-slate-700 mb-2">No Recent Activity</h3>
-               <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">There is no recent activity recorded for this student.</p>
-             </div>
-          )}
-
         </div>
       </div>
+      
+      {selectedPenaltyFee && (
+        <PenaltyModal fee={selectedPenaltyFee} onClose={() => setSelectedPenaltyFee(null)} />
+      )}
+      {selectedPaymentFee && (
+        <RecordPaymentModal fee={selectedPaymentFee} onClose={() => setSelectedPaymentFee(null)} />
+      )}
+      {selectedReminderFee && (
+        <SendReminderModal fee={selectedReminderFee} onClose={() => setSelectedReminderFee(null)} />
+      )}
+      {selectedReceiptFee && (
+        (() => {
+          const latestTxn = selectedReceiptFee.transactions && selectedReceiptFee.transactions.length > 0 
+            ? selectedReceiptFee.transactions[selectedReceiptFee.transactions.length - 1] 
+            : null;
+            
+          let bulkTxns = null;
+          if (latestTxn && latestTxn.receiptUrl && latestTxn.receiptUrl.startsWith('TXN-BULK')) {
+            bulkTxns = student.studentFees
+              .flatMap(f => (f.transactions || []).map(t => ({ ...t, studentFee: f })))
+              .filter(t => t.receiptUrl === latestTxn.receiptUrl);
+          }
+          
+          const transactionData = latestTxn ? {
+            ...latestTxn,
+            student: student,
+            bulkTransactions: bulkTxns
+          } : { 
+            id: selectedReceiptFee.id, 
+            amount: selectedReceiptFee.amountPaid, 
+            method: 'SYSTEM', 
+            status: 'COMPLETED',
+            createdAt: new Date().toISOString(),
+            studentFee: selectedReceiptFee,
+            student: student
+          };
+
+          return (
+            <ReceiptModal 
+              isOpen={true} 
+              onClose={() => setSelectedReceiptFee(null)} 
+              transaction={transactionData} 
+            />
+          );
+        })()
+      )}
     </div>
   );
 }

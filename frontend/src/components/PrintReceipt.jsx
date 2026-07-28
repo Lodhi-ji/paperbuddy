@@ -15,7 +15,13 @@ const PrintReceipt = forwardRef(({ transaction }, ref) => {
   const dateObj = new Date(transaction.createdAt || new Date());
   const dateStr = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   const timeStr = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+  const txnsToRender = transaction.bulkTransactions || [transaction];
+  const grandTotal = txnsToRender.reduce((sum, t) => sum + Number(t.amount), 0);
   const receiptId = transaction.receiptUrl?.replace('https://', '').substring(0, 10) || `TXN-${(transaction.id || '').substring(0,8)}`;
+
+  const isPartial = txnsToRender.some(txn => txn.studentFee?.status === 'PARTIAL' || txn.studentFee?.status === 'UNPAID');
+
 
   return (
     <div 
@@ -79,8 +85,8 @@ const PrintReceipt = forwardRef(({ transaction }, ref) => {
       <div className="flex justify-between items-end py-10">
         <div>
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Received From</h3>
-          <div className="text-lg font-bold text-slate-900">{transaction.studentFee?.student?.user?.name || 'Student Name'}</div>
-          <div className="text-sm font-semibold text-slate-600 mt-1">Class {transaction.studentFee?.student?.class || 'N/A'}</div>
+          <div className="text-lg font-bold text-slate-900">{transaction.studentFee?.student?.user?.name || transaction.student?.user?.name || transaction.student?.name || 'Student Name'}</div>
+          <div className="text-sm font-semibold text-slate-600 mt-1">Class {transaction.studentFee?.student?.class || transaction.student?.class || 'N/A'}</div>
           {transaction.studentFee?.student?.rollNumber && (
             <div className="text-sm font-mono text-slate-500 mt-1">Roll No: {transaction.studentFee.student.rollNumber}</div>
           )}
@@ -88,21 +94,28 @@ const PrintReceipt = forwardRef(({ transaction }, ref) => {
 
         <div className="text-right">
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Payment Status</h3>
-          {transaction.status === 'SUCCESS' ? (
-            <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm">
-              <CheckCircle2 className="w-4 h-4" /> Paid in Full
-            </div>
+          {['SUCCESS', 'COMPLETED', 'PAID'].includes(transaction.status) ? (
+            isPartial ? (
+              <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200/60 px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm">
+                <CheckCircle2 className="w-4 h-4" /> Partial Payment
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm">
+                <CheckCircle2 className="w-4 h-4" /> Paid in Full
+              </div>
+            )
           ) : transaction.status === 'PENDING' ? (
             <div className="inline-flex items-center gap-2 bg-amber-50 text-amber-700 border border-amber-200/60 px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm">
-              Pending Clearance
+              <Clock className="w-4 h-4" /> Pending Clearance
             </div>
           ) : (
             <div className="inline-flex items-center gap-2 bg-rose-50 text-rose-700 border border-rose-200/60 px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm">
-              Payment Failed
+              <XCircle className="w-4 h-4" /> Payment Failed
             </div>
           )}
-          <div className="mt-3 text-sm font-medium text-slate-500">
-            Paid via <span className="font-bold text-slate-700">{transaction.method || transaction.paymentMethod || 'N/A'}</span>
+          
+          <div className="text-[11px] font-bold text-slate-400 mt-2">
+            Paid via <span className="text-slate-700">{transaction.method || transaction.paymentMethod || 'N/A'}</span>
           </div>
         </div>
       </div>
@@ -118,46 +131,50 @@ const PrintReceipt = forwardRef(({ transaction }, ref) => {
             </tr>
           </thead>
           <tbody>
-            <tr className="border-b border-slate-200">
-              <td className="py-5 px-2">
-                <div className="font-bold text-slate-800 text-[15px]">
-                  {transaction.studentFee?.feeStructure?.feeType?.name || 'Tuition Fee'}
-                </div>
-                <div className="text-xs text-slate-500 mt-1 font-medium">
-                  Fee Collection for Academic Year {transaction.studentFee?.feeStructure?.academicYear || '2025-2026'}
-                </div>
-              </td>
-              <td className="py-5 px-2 text-center font-medium text-slate-600 text-sm">
-                Q1
-              </td>
-              <td className="py-5 px-2 text-right font-mono font-semibold text-slate-900 text-[15px]">
-                {formatCurrency(transaction.amount)}
-              </td>
-            </tr>
-            
-            {transaction.waiverAmount > 0 && (
-              <tr className="border-b border-slate-200 text-emerald-600">
-                <td className="py-4 px-2">
-                  <div className="font-bold text-[14px]">Discount / Waiver Applied</div>
-                </td>
-                <td className="py-4 px-2 text-center font-medium text-sm">-</td>
-                <td className="py-4 px-2 text-right font-mono font-semibold text-[15px]">
-                  -{formatCurrency(transaction.waiverAmount)}
-                </td>
-              </tr>
-            )}
-            
-            {transaction.penaltyAmount > 0 && (
-              <tr className="border-b border-slate-200 text-rose-600">
-                <td className="py-4 px-2">
-                  <div className="font-bold text-[14px]">Late Fee Penalty</div>
-                </td>
-                <td className="py-4 px-2 text-center font-medium text-sm">-</td>
-                <td className="py-4 px-2 text-right font-mono font-semibold text-[15px]">
-                  +{formatCurrency(transaction.penaltyAmount)}
-                </td>
-              </tr>
-            )}
+            {txnsToRender.map((txn, index) => (
+              <React.Fragment key={txn.id || index}>
+                <tr className="border-b border-slate-200">
+                  <td className="py-5 px-2">
+                    <div className="font-bold text-slate-800 text-[15px]">
+                      {txn.studentFee?.feeStructure?.feeType?.name || 'Tuition Fee'}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1 font-medium">
+                      Fee Collection for Academic Year {txn.studentFee?.feeStructure?.academicYear || '2025-2026'}
+                    </div>
+                  </td>
+                  <td className="py-5 px-2 text-center font-medium text-slate-600 text-sm">
+                    Q1
+                  </td>
+                  <td className="py-5 px-2 text-right font-mono font-semibold text-slate-900 text-[15px]">
+                    {formatCurrency(txn.amount)}
+                  </td>
+                </tr>
+                
+                {txn.studentFee?.waiverAmount > 0 && (
+                  <tr className="border-b border-slate-200 text-emerald-600">
+                    <td className="py-4 px-2">
+                      <div className="font-bold text-[14px]">Discount / Waiver Applied</div>
+                    </td>
+                    <td className="py-4 px-2 text-center font-medium text-sm">-</td>
+                    <td className="py-4 px-2 text-right font-mono font-semibold text-[15px]">
+                      -{formatCurrency(txn.studentFee.waiverAmount)}
+                    </td>
+                  </tr>
+                )}
+                
+                {txn.studentFee?.penaltyAmount > 0 && (
+                  <tr className="border-b border-slate-200 text-rose-600">
+                    <td className="py-4 px-2">
+                      <div className="font-bold text-[14px]">Late Fee Penalty</div>
+                    </td>
+                    <td className="py-4 px-2 text-center font-medium text-sm">-</td>
+                    <td className="py-4 px-2 text-right font-mono font-semibold text-[15px]">
+                      +{formatCurrency(txn.studentFee.penaltyAmount)}
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
           </tbody>
         </table>
       </div>
@@ -169,7 +186,7 @@ const PrintReceipt = forwardRef(({ transaction }, ref) => {
             <tbody>
               <tr>
                 <td className="py-2 text-slate-500 font-medium">Subtotal</td>
-                <td className="py-2 font-mono font-semibold text-slate-800">{formatCurrency(transaction.amount)}</td>
+                <td className="py-2 font-mono font-semibold text-slate-800">{formatCurrency(grandTotal)}</td>
               </tr>
               <tr>
                 <td className="py-2 text-slate-500 font-medium">Tax / Convenience Fee (0%)</td>
@@ -177,7 +194,7 @@ const PrintReceipt = forwardRef(({ transaction }, ref) => {
               </tr>
               <tr className="border-t-2 border-slate-800">
                 <td className="py-4 font-black text-slate-900 text-[16px] uppercase tracking-wider">Total Paid</td>
-                <td className="py-4 font-mono font-black text-indigo-700 text-2xl">{formatCurrency(transaction.amount)}</td>
+                <td className="py-4 font-mono font-black text-indigo-700 text-2xl">{formatCurrency(grandTotal)}</td>
               </tr>
             </tbody>
           </table>
@@ -190,14 +207,14 @@ const PrintReceipt = forwardRef(({ transaction }, ref) => {
           <div className="border-b border-slate-400 h-12 mb-2 relative">
             {/* Simulated Signature */}
             <div className="absolute inset-0 flex items-end justify-center font-serif italic text-2xl text-slate-800 opacity-60" style={{ transform: 'rotate(-5deg)' }}>
-              Authorized
+              {transaction?.student?.school?.name || transaction?.studentFee?.school?.name || 'Greenwood'}
             </div>
           </div>
           <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Authorized Signatory</div>
         </div>
 
         {/* Paid Stamp */}
-        {transaction.status === 'SUCCESS' && (
+        {['SUCCESS', 'COMPLETED', 'PAID'].includes(transaction.status) && (
           <div className="w-32 h-32 rounded-full border-[6px] border-emerald-600/20 flex flex-col items-center justify-center -rotate-12 select-none pointer-events-none">
             <span className="text-emerald-600 font-black text-2xl tracking-widest uppercase">PAID</span>
             <span className="text-emerald-600/80 font-bold text-[10px] mt-1">{dateStr}</span>

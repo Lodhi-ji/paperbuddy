@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Search, 
   Download,
@@ -19,7 +19,8 @@ import {
   RotateCcw,
   Plus,
   Receipt,
-  Globe
+  Globe,
+  Loader2
 } from 'lucide-react';
 import ReceiptModal from './ReceiptModal';
 
@@ -324,9 +325,9 @@ export default function TransactionCenter({
                         <td className="py-4">
                           <div className="flex items-center gap-2">
                             <div className="p-1.5 bg-white rounded shadow-sm border border-slate-100">
-                              {getMethodIcon(tx.paymentMethod)}
+                              {getMethodIcon(tx.method)}
                             </div>
-                            <span className="font-bold text-slate-600 text-xs">{getMethodLabel(tx.paymentMethod)}</span>
+                            <span className="font-bold text-slate-600 text-xs">{getMethodLabel(tx.method)}</span>
                           </div>
                         </td>
                         <td className="py-4">
@@ -358,7 +359,7 @@ export default function TransactionCenter({
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl">
                                 <div>
                                   <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Gateway</div>
-                                  <div className="text-sm font-bold text-slate-700">Razorpay</div>
+                                  <div className="text-sm font-bold text-slate-700">{tx.method === 'ONLINE' ? 'Razorpay' : 'Offline / Manual'}</div>
                                 </div>
                                 <div>
                                   <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Reference ID</div>
@@ -366,7 +367,7 @@ export default function TransactionCenter({
                                 </div>
                                 <div>
                                   <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Collected By</div>
-                                  <div className="text-sm font-bold text-slate-700">System (Online)</div>
+                                  <div className="text-sm font-bold text-slate-700">{tx.method === 'ONLINE' ? 'System (Online)' : 'Accountant (POS)'}</div>
                                 </div>
                                 <div>
                                   <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Fee Category</div>

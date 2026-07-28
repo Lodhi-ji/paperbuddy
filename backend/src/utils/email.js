@@ -80,3 +80,104 @@ export async function sendPasswordResetEmail(toEmail, resetUrl) {
     return { success: false, error };
   }
 }
+
+/**
+ * Sends a fee reminder email to a student.
+ * @param {string} toEmail - The user's email address
+ * @param {string} studentName - The student's full name
+ * @param {Object} feeDetails - Object containing fee information
+ */
+export async function sendFeeReminderEmail(toEmail, studentName, feeDetails) {
+  try {
+    const dueDateString = new Date(feeDetails.dueDate).toLocaleDateString('en-IN', {
+      day: 'numeric', month: 'long', year: 'numeric'
+    });
+    
+    const info = await transporter.sendMail({
+      from: process.env.EMAIL_FROM || '"Campus Pay Finance" <finance@campuspay.com>',
+      to: toEmail,
+      subject: `Action Required: Outstanding Fee Payment - ${feeDetails.feeName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
+          <h2 style="color: #1e293b;">Fee Payment Reminder</h2>
+          <p style="color: #475569; font-size: 16px;">Dear ${studentName},</p>
+          <p style="color: #475569; font-size: 16px;">This is a friendly reminder that you have an outstanding fee payment pending on your Campus Pay account.</p>
+          
+          <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #5B5CEB;">
+            <p style="margin: 0 0 10px 0; color: #334155;"><strong>Fee Type:</strong> ${feeDetails.feeName}</p>
+            <p style="margin: 0 0 10px 0; color: #334155;"><strong>Outstanding Amount:</strong> ₹${feeDetails.amountDue}</p>
+            <p style="margin: 0 0 0 0; color: #334155;"><strong>Due Date:</strong> ${dueDateString}</p>
+          </div>
+          
+          <div style="background-color: #fff1f2; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #e11d48;">
+            <p style="margin: 0; color: #9f1239; font-size: 14px;"><strong>Important Note:</strong> Please ensure payment is made by the due date. If the fee remains unpaid after this date, late payment penalties may be automatically applied to your account.</p>
+          </div>
+          
+          <div style="margin: 30px 0; text-align: center;">
+            <a href="http://localhost:5173/login" style="background-color: #5B5CEB; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Pay Now via Portal</a>
+          </div>
+          
+          <p style="color: #475569; font-size: 14px;"><em>If you have already made this payment, please disregard this email.</em></p>
+          <p style="color: #94a3b8; font-size: 12px; margin-top: 30px;">Regards,<br>Campus Pay Finance Team</p>
+        </div>
+      `,
+    });
+    
+    console.log('Fee reminder email sent successfully via Nodemailer. Message ID:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error sending fee reminder email via Nodemailer:', error);
+    return { success: false, error };
+  }
+}
+
+/**
+ * Sends a penalty notification email to a student.
+ * @param {string} toEmail - The user's email address
+ * @param {string} studentName - The student's full name
+ * @param {Object} penaltyDetails - Object containing penalty info
+ */
+export async function sendPenaltyNotification(toEmail, studentName, penaltyDetails) {
+  try {
+    const nextDueDateString = new Date(penaltyDetails.nextDueDate).toLocaleDateString('en-IN', {
+      day: 'numeric', month: 'long', year: 'numeric'
+    });
+    
+    const info = await transporter.sendMail({
+      from: process.env.EMAIL_FROM || '"Campus Pay Finance" <finance@campuspay.com>',
+      to: toEmail,
+      subject: `Notice: Penalty Applied - ${penaltyDetails.feeName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
+          <h2 style="color: #1e293b;">Penalty Notice</h2>
+          <p style="color: #475569; font-size: 16px;">Dear ${studentName},</p>
+          <p style="color: #475569; font-size: 16px;">This is to notify you that a late penalty has been applied to your outstanding fee.</p>
+          
+          <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #e11d48;">
+            <p style="margin: 0 0 10px 0; color: #334155;"><strong>Fee Type:</strong> ${penaltyDetails.feeName}</p>
+            <p style="margin: 0 0 10px 0; color: #334155;"><strong>Penalty Added:</strong> ₹${penaltyDetails.penaltyAdded}</p>
+            <p style="margin: 0 0 10px 0; color: #334155;"><strong>Total Outstanding:</strong> ₹${penaltyDetails.totalOutstanding}</p>
+            <p style="margin: 0 0 0 0; color: #334155;"><strong>Extended Due Date:</strong> ${nextDueDateString}</p>
+          </div>
+          
+          <div style="background-color: #fff1f2; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0; color: #9f1239; font-size: 14px;"><strong>Important:</strong> Please ensure payment is made before the extended due date to avoid further penalties being periodically added.</p>
+          </div>
+          
+          <div style="margin: 30px 0; text-align: center;">
+            <a href="http://localhost:5173/login" style="background-color: #5B5CEB; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Pay Now via Portal</a>
+          </div>
+          
+          <p style="color: #94a3b8; font-size: 12px; margin-top: 30px;">Regards,<br>Campus Pay Finance Team</p>
+        </div>
+      `,
+    });
+    
+    console.log('Penalty email sent successfully. Message ID:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error sending penalty email:', error);
+    return { success: false, error };
+  }
+}
+

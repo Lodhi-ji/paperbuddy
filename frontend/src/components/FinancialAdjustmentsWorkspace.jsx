@@ -156,12 +156,7 @@ export default function FinancialAdjustmentsWorkspace({
     );
   };
 
-  // Mock History
-  const mockHistory = [
-    { date: 'Yesterday, 4:20 PM', admin: 'Sarah Jenkins', action: 'Waiver', reason: 'Sibling Discount', amount: 500, type: 'waiver' },
-    { date: 'Jul 2, 09:15 AM', admin: 'Dr. Robert', action: 'Penalty', reason: 'Late Payment Fee', amount: 100, type: 'penalty' },
-    { date: 'Jun 18, 11:30 AM', admin: 'System Admin', action: 'Correction', reason: 'Manual balance fix', amount: 0, type: 'correction' },
-  ];
+
 
   return (
     <div className="relative">
@@ -545,33 +540,15 @@ export default function FinancialAdjustmentsWorkspace({
                       <h4 className="text-xs font-black uppercase text-slate-800 tracking-wider mb-6 flex items-center gap-2">
                         <History className="w-4 h-4 text-slate-400" /> Audit Timeline
                       </h4>
-                      <div className="space-y-5 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
-                        
-                        {mockHistory.map((item, idx) => (
-                          <div key={idx} className="relative flex items-start gap-4">
-                            <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-slate-100 shadow shrink-0 relative z-10 mt-1">
-                               {item.type === 'waiver' ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : 
-                                item.type === 'penalty' ? <AlertCircle className="w-4 h-4 text-rose-500" /> : 
-                                <ShieldCheck className="w-4 h-4 text-slate-500" />}
-                            </div>
-                            <div className="flex-1 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                              <div className="flex justify-between items-start mb-1.5">
-                                <span className="font-bold text-slate-800 text-sm">{item.action}</span>
-                                <span className={`font-black text-xs ${
-                                  item.type === 'waiver' ? 'text-emerald-500' : 
-                                  item.type === 'penalty' ? 'text-rose-500' : 'text-slate-500'
-                                }`}>
-                                  {item.type === 'waiver' ? '-' : item.type === 'penalty' ? '+' : ''}{formatCurrency(item.amount)}
-                                </span>
-                              </div>
-                              <p className="text-xs text-slate-500 mb-3">{item.reason}</p>
-                              <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-400 border-t border-slate-50 pt-2">
-                                 <span>{item.date}</span>
-                                 <span>{item.admin}</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                      
+                      <div className="flex flex-col items-center justify-center py-10 px-6 bg-white border-2 border-dashed border-slate-200 rounded-2xl text-center shadow-sm">
+                        <div className="w-12 h-12 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mb-4">
+                          <History className="w-5 h-5" />
+                        </div>
+                        <h5 className="text-sm font-bold text-slate-700 mb-1.5">No Adjustments Recorded</h5>
+                        <p className="text-xs font-medium text-slate-400 max-w-[220px] leading-relaxed">
+                          There are currently no manual financial adjustments for this fee. Any adjustments made will appear here.
+                        </p>
                       </div>
                     </div>
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Layers, 
   Plus, 
@@ -23,7 +24,8 @@ import {
   Pie, 
   Cell, 
   Tooltip, 
-  ResponsiveContainer 
+  ResponsiveContainer,
+  Legend
 } from 'recharts';
 
 export default function FeeManagementCenter({
@@ -32,25 +34,88 @@ export default function FeeManagementCenter({
   students,
   typeName, setTypeName,
   typeDesc, setTypeDesc,
+  typeAmount, setTypeAmount,
   typeRecurring, setTypeRecurring,
+  typeRecurringInterval, setTypeRecurringInterval,
+  typeVariable, setTypeVariable,
+  typeDueDays, setTypeDueDays,
   handleCreateFeeType,
   createFeeTypeMutation,
-  fsType, setFsType,
+  fsTypes, setFsTypes,
   fsClass, setFsClass,
   fsAcademicYear, setFsAcademicYear,
-  fsAmount, setFsAmount,
-  fsDueDate, setFsDueDate,
   handleCreateFeeStructure,
-  createFeeStructureMutation
+  createFeeStructureMutation,
+  updateFeeTypeMutation,
+  deleteFeeTypeMutation
 }) {
   const [activeTab, setActiveTab] = useState('categories');
   const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
+  const [selectedClassBreakdown, setSelectedClassBreakdown] = useState(null);
+  
+  // Edit State
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editRecurring, setEditRecurring] = useState(false);
+  const [editRecurringInterval, setEditRecurringInterval] = useState('');
+  const [editVariable, setEditVariable] = useState(false);
+  const [editDueDays, setEditDueDays] = useState('30');
+
+  const localHandleCreate = (e) => {
+    e.preventDefault();
+    if (window.confirm("Are you sure you want to add this fee category?")) {
+      handleCreateFeeType(e);
+      setShowCreateCategoryModal(false);
+    }
+  };
+
+  const handleDeleteCategory = (typeId) => {
+    if (window.confirm("Are you seriously sure you want to delete this Category? If it is already assigned to a class structure, the deletion will fail to protect student data.")) {
+      deleteFeeTypeMutation.mutate(typeId, {
+        onError: (err) => {
+          alert(`Failed to delete: ${err.response?.data?.error || err.message}`);
+        }
+      });
+    }
+  };
+
+  const handleOpenEdit = (type) => {
+    setEditingCategory(type.id);
+    setEditName(type.name);
+    setEditDesc(type.description || '');
+    setEditAmount(type.amount);
+    setEditRecurring(type.isRecurring);
+    setEditRecurringInterval(type.recurringIntervalDays || '');
+    setEditVariable(type.isVariable || false);
+    setEditDueDays(type.dueDays || '30');
+  };
+
+  const handleSaveEdit = (e) => {
+    e.preventDefault();
+    if (window.confirm("Are you sure you want to save these changes to the fee category?")) {
+      updateFeeTypeMutation.mutate({
+        id: editingCategory,
+        name: editName,
+        description: editDesc,
+        amount: editAmount,
+        isRecurring: editRecurring,
+        recurringIntervalDays: editRecurringInterval,
+        isVariable: editVariable,
+        dueDays: editDueDays
+      }, {
+        onSuccess: () => {
+          setEditingCategory(null);
+        }
+      });
+    }
+  };
 
   const tabs = [
     { id: 'categories', label: 'Fee Categories' },
-    { id: 'structures', label: 'Class Fee Structures' },
-    { id: 'templates', label: 'Fee Templates' },
-    { id: 'sessions', label: 'Academic Sessions' }
+    { id: 'structures', label: 'Class Fee Structures' }
   ];
 
   const formatCurrency = (amount) => {
@@ -100,7 +165,7 @@ export default function FeeManagementCenter({
         };
       }
       classGrouped[className].categories++;
-      classGrouped[className].amount += Number(s.amount);
+      classGrouped[className].amount += Number(s.feeType?.amount || 0);
       classGrouped[className].feeTypeIds.add(s.feeTypeId);
     });
   }
@@ -128,7 +193,7 @@ export default function FeeManagementCenter({
   if (structures && structures.length > 0) {
     structures.forEach(s => {
       const typeName = s.feeType?.name || 'Other';
-      categoryAmounts[typeName] = (categoryAmounts[typeName] || 0) + Number(s.amount);
+      categoryAmounts[typeName] = (categoryAmounts[typeName] || 0) + Number(s.feeType?.amount || 0);
     });
   }
   const totalStructureAmt = Object.values(categoryAmounts).reduce((a, b) => a + b, 0);
@@ -138,16 +203,11 @@ export default function FeeManagementCenter({
     color: COLORS[idx % COLORS.length]
   }));
 
-  const mockTemplates = [
-    { name: 'CBSE Primary', classes: 'Grade 1-5', amount: 15000 },
-    { name: 'CBSE Secondary', classes: 'Grade 6-10', amount: 22000 },
-    { name: 'Science Stream', classes: 'Grade 11-12', amount: 35000 },
-    { name: 'Commerce Stream', classes: 'Grade 11-12', amount: 32000 }
-  ];
+
 
   return (
-    <div className="animate-in fade-in duration-500 space-y-8">
-      
+    <>
+      <div className="animate-in fade-in duration-500 space-y-8">
       {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
@@ -160,7 +220,7 @@ export default function FeeManagementCenter({
         </div>
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => setActiveTab('categories')}
+            onClick={() => setShowCreateCategoryModal(true)}
             className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-bold shadow-sm hover:shadow-md hover:border-brand-primary/30 transition-all flex items-center gap-2"
           >
             <Plus className="w-4 h-4 text-brand-primary" /> New Category
@@ -188,8 +248,8 @@ export default function FeeManagementCenter({
         </div>
         <div className="glass-card rounded-[20px] p-5 border border-white/40 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
           <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl -mr-8 -mt-8" />
-          <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Active Structures</h3>
-          <div className="text-3xl font-black text-slate-800">{structures?.length || 0}</div>
+          <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Active Class Structures</h3>
+          <div className="text-3xl font-black text-slate-800">{realStructures?.length || 0}</div>
         </div>
         <div className="glass-card rounded-[20px] p-5 border border-white/40 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
           <div className="absolute top-0 right-0 w-24 h-24 bg-brand-primary/10 rounded-full blur-2xl -mr-8 -mt-8" />
@@ -226,68 +286,13 @@ export default function FeeManagementCenter({
         
         {/* TAB 1: CATEGORIES */}
         {activeTab === 'categories' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
-            {/* Left Panel: Create Form (30%) */}
-            <div className="lg:col-span-4">
-              <div className="glass-card rounded-[24px] p-6 border border-white/40 shadow-sm sticky top-24">
-                <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-6 flex items-center gap-2">
-                  <Plus className="w-5 h-5 text-indigo-500" /> Create Category
-                </h3>
-                
-                <form onSubmit={handleCreateFeeType} className="space-y-5 text-xs font-bold text-slate-600">
-                  <div>
-                    <label className="block mb-1.5 text-[10px] uppercase tracking-widest text-slate-400">Category Name *</label>
-                    <input
-                      type="text"
-                      value={typeName}
-                      onChange={(e) => setTypeName(e.target.value)}
-                      placeholder="e.g. Tuition Fee"
-                      className="w-full glass-input text-sm"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1.5 text-[10px] uppercase tracking-widest text-slate-400">Description</label>
-                    <textarea
-                      value={typeDesc}
-                      onChange={(e) => setTypeDesc(e.target.value)}
-                      placeholder="Brief description of this fee"
-                      className="w-full glass-input text-sm h-24 resize-none"
-                    />
-                  </div>
-                  <label className="flex items-start gap-3 cursor-pointer p-4 rounded-xl border border-slate-200/60 bg-slate-50/50 hover:bg-slate-50 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={typeRecurring}
-                      onChange={(e) => setTypeRecurring(e.target.checked)}
-                      className="mt-0.5 rounded border-slate-300 text-brand-primary focus:ring-brand-primary"
-                    />
-                    <div>
-                      <div className="text-sm font-bold text-slate-700">Recurring Fee</div>
-                      <div className="text-[10px] font-medium text-slate-500 mt-1">Check this if the fee is charged periodically (e.g. Monthly Transport) rather than one-time (e.g. Admission).</div>
-                    </div>
-                  </label>
-                  
-                  <button
-                    type="submit"
-                    disabled={createFeeTypeMutation.isPending}
-                    className="w-full glass-btn-primary flex items-center justify-center gap-2 py-3 mt-4 text-sm"
-                  >
-                    {createFeeTypeMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save Category'}
-                  </button>
-                </form>
-              </div>
+          <div className="space-y-6">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-sm font-black text-slate-800">Existing Categories</h3>
+              <div className="text-xs font-bold text-slate-400">{feeTypes?.length || 0} Total</div>
             </div>
-
-            {/* Right Panel: Existing Categories (70%) */}
-            <div className="lg:col-span-8 space-y-4">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-sm font-black text-slate-800">Existing Categories</h3>
-                <div className="text-xs font-bold text-slate-400">{feeTypes?.length || 0} Total</div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {feeTypes && feeTypes.length > 0 ? (
                   feeTypes.map((type) => (
                     <div key={type.id} className="glass-card rounded-2xl p-5 border border-white/40 shadow-sm group hover:border-brand-primary/30 hover:shadow-md transition-all">
@@ -308,15 +313,15 @@ export default function FeeManagementCenter({
                           </div>
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button className="p-1.5 text-slate-400 hover:text-brand-primary rounded-lg hover:bg-slate-50 transition-colors"><Edit2 className="w-4 h-4"/></button>
-                          <button className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 transition-colors"><Trash2 className="w-4 h-4"/></button>
+                          <button onClick={() => handleOpenEdit(type)} className="p-1.5 text-slate-400 hover:text-brand-primary rounded-lg hover:bg-slate-50 transition-colors"><Edit2 className="w-4 h-4"/></button>
+                          <button onClick={() => handleDeleteCategory(type.id)} className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 transition-colors"><Trash2 className="w-4 h-4"/></button>
                         </div>
                       </div>
                       <div className="pt-4 border-t border-slate-100 flex justify-between items-center text-xs">
                         <div className="font-bold text-slate-500 flex items-center gap-1.5">
                           <Users className="w-4 h-4 text-slate-400" /> Assigned to {getStatsForType(type.id).studentCount} Students
                         </div>
-                        <div className="font-mono font-bold text-slate-700 bg-slate-50 px-2 py-1 rounded">Avg {formatCurrency(getStatsForType(type.id).avgAmount)}</div>
+                        <div className="font-mono font-black text-slate-700 bg-slate-50 px-2 py-1 rounded">{formatCurrency(type.amount)}</div>
                       </div>
                     </div>
                   ))
@@ -326,7 +331,6 @@ export default function FeeManagementCenter({
                   </div>
                 )}
               </div>
-            </div>
           </div>
         )}
 
@@ -376,7 +380,10 @@ export default function FeeManagementCenter({
                             </div>
                           </div>
                           
-                          <button className="w-full py-2.5 rounded-xl border border-slate-200 bg-white text-brand-primary text-xs font-bold hover:bg-brand-primary hover:text-white hover:border-brand-primary transition-colors flex justify-center items-center gap-2">
+                          <button 
+                            onClick={() => setSelectedClassBreakdown(struct.rawClass)}
+                            className="w-full py-2.5 rounded-xl border border-slate-200 bg-white text-brand-primary text-xs font-bold hover:bg-brand-primary hover:text-white hover:border-brand-primary transition-colors flex justify-center items-center gap-2"
+                          >
                             View Complete Breakdown <ArrowRight className="w-4 h-4" />
                           </button>
                         </div>
@@ -389,57 +396,6 @@ export default function FeeManagementCenter({
                   )}
                 </div>
 
-                {/* Assignment Progress & Insights Section */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-                  <div className="lg:col-span-2 glass-card rounded-[24px] p-6 border border-white/40 shadow-sm flex flex-col justify-center">
-                     <h3 className="text-xs font-black uppercase text-slate-800 tracking-wider mb-6 flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Fee Assignment Progress
-                      </h3>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-end">
-                          <div>
-                            <div className="text-3xl font-black text-slate-800">{assignmentProgress}%</div>
-                            <div className="text-xs font-medium text-slate-500">of active students assigned a structure</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm font-bold text-slate-700">{assignedStudents} / {totalStudents}</div>
-                            <div className="text-[10px] font-bold text-slate-400 uppercase">Students</div>
-                          </div>
-                        </div>
-                        <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${assignmentProgress}%` }} />
-                        </div>
-                      </div>
-                  </div>
-                  
-                  <div className="glass-card rounded-[24px] p-6 border border-white/40 shadow-sm">
-                    <h3 className="text-xs font-black uppercase text-slate-800 tracking-wider mb-2 flex items-center gap-2">
-                      <PieChartIcon className="w-4 h-4 text-indigo-500" /> Category Distribution
-                    </h3>
-                    <div className="h-32 w-full mt-4">
-                      {pieData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={pieData}
-                              innerRadius={30}
-                              outerRadius={50}
-                              paddingAngle={5}
-                              dataKey="value"
-                            >
-                              {pieData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }} />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="h-full flex items-center justify-center text-slate-400 text-xs font-semibold text-center">No categories mapped.</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
               </>
             ) : (
               // Generate Form View
@@ -459,18 +415,47 @@ export default function FeeManagementCenter({
 
                   <form onSubmit={(e) => { handleCreateFeeStructure(e); setShowGenerateModal(false); }} className="space-y-5 text-xs font-bold text-slate-600">
                     <div>
-                      <label className="block mb-1.5 text-[10px] uppercase tracking-widest text-slate-400">Choose Fee Category *</label>
-                      <select
-                        value={fsType}
-                        onChange={(e) => setFsType(e.target.value)}
-                        className="w-full glass-input text-sm h-12"
-                        required
-                      >
-                        <option value="">Select Category</option>
-                        {feeTypes?.map((t) => (
-                          <option key={t.id} value={t.id}>{t.name} ({t.isRecurring ? 'Recurring' : 'One Time'})</option>
-                        ))}
-                      </select>
+                      <label className="block mb-3 text-[10px] uppercase tracking-widest text-slate-400">Select Fee Categories *</label>
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                        {feeTypes?.map((t) => {
+                          const isAlreadyAssigned = fsClass && fsAcademicYear && structures?.some(s => s.class === fsClass && s.feeTypeId === t.id && s.academicYear === fsAcademicYear);
+                          return (
+                            <label key={t.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors cursor-pointer ${
+                              isAlreadyAssigned 
+                                ? 'bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed' 
+                                : 'bg-white border-slate-200 hover:border-brand-primary/50'
+                            }`}>
+                              <input
+                                type="checkbox"
+                                value={t.id}
+                                disabled={isAlreadyAssigned}
+                                checked={fsTypes.includes(t.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setFsTypes(prev => [...prev, t.id]);
+                                  } else {
+                                    setFsTypes(prev => prev.filter(id => id !== t.id));
+                                  }
+                                }}
+                                className="rounded border-slate-300 text-brand-primary focus:ring-brand-primary mt-0.5"
+                              />
+                              <div className="flex-1 flex justify-between items-center">
+                                <div>
+                                  <div className="text-sm font-bold text-slate-700">{t.name}</div>
+                                  <div className="text-[10px] font-medium text-slate-500 mt-0.5">{t.isRecurring ? 'Recurring' : 'One Time'}</div>
+                                </div>
+                                <div className="text-sm font-black text-slate-800">
+                                  {formatCurrency(t.amount)}
+                                </div>
+                              </div>
+                              {isAlreadyAssigned && <span className="text-[10px] font-bold text-slate-400">✓ Assigned</span>}
+                            </label>
+                          );
+                        })}
+                        {(!feeTypes || feeTypes.length === 0) && (
+                          <div className="text-xs text-slate-400 font-medium p-2">No fee categories created yet.</div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-5">
@@ -498,32 +483,7 @@ export default function FeeManagementCenter({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-5">
-                      <div>
-                        <label className="block mb-1.5 text-[10px] uppercase tracking-widest text-slate-400">Billing Amount (INR) *</label>
-                        <div className="relative">
-                          <IndianRupee className="w-4 h-4 text-slate-400 absolute left-4 top-4" />
-                          <input
-                            type="number"
-                            value={fsAmount}
-                            onChange={(e) => setFsAmount(e.target.value)}
-                            placeholder="5000"
-                            className="w-full glass-input text-sm h-12 pl-10"
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block mb-1.5 text-[10px] uppercase tracking-widest text-slate-400">Payment Due Date *</label>
-                        <input
-                          type="date"
-                          value={fsDueDate}
-                          onChange={(e) => setFsDueDate(e.target.value)}
-                          className="w-full glass-input text-sm h-12"
-                          required
-                        />
-                      </div>
-                    </div>
+
 
                     <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl flex items-start gap-3 text-xs text-emerald-700 font-semibold mt-4">
                       <AlertTriangle className="w-5 h-5 text-emerald-500 shrink-0" />
@@ -564,19 +524,21 @@ export default function FeeManagementCenter({
                         <div className="space-y-4 mb-8">
                            <div className="flex justify-between items-center text-sm font-bold">
                              <span className="text-slate-600">Existing Categories</span>
-                             <span className="text-slate-400 text-xs italic">3 Categories (~₹15,000)</span>
+                             <span className="text-slate-400 text-xs italic">
+                               {classGrouped[fsClass]?.categories || 0} Categories (~{formatCurrency(classGrouped[fsClass]?.amount || 0)})
+                             </span>
                            </div>
                            <div className="flex justify-between items-center text-sm font-bold bg-brand-primary/5 p-3 rounded-xl border border-brand-primary/10">
                              <span className="text-brand-primary flex items-center gap-2">
-                               <Plus className="w-3 h-3" /> New Category
+                               <Plus className="w-3 h-3" /> New Categories ({fsTypes?.length || 0})
                              </span>
-                             <span className="text-brand-primary">{fsAmount ? formatCurrency(fsAmount) : '₹0'}</span>
+                             <span className="text-brand-primary">{formatCurrency(fsTypes?.map(id => feeTypes?.find(t => t.id === id)?.amount || 0).reduce((a, b) => Number(a) + Number(b), 0))}</span>
                            </div>
                         </div>
                         
                         <div className="pt-6 border-t border-slate-200 flex justify-between items-end">
                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Est. Total</span>
-                           <span className="text-3xl font-black text-slate-800">{formatCurrency(15000 + Number(fsAmount || 0))}</span>
+                           <span className="text-3xl font-black text-slate-800">{formatCurrency((classGrouped[fsClass]?.amount || 0) + (fsTypes.map(id => feeTypes?.find(t => t.id === id)?.amount || 0).reduce((a, b) => Number(a) + Number(b), 0)))}</span>
                         </div>
                      </div>
                   </div>
@@ -586,78 +548,301 @@ export default function FeeManagementCenter({
           </div>
         )}
 
-        {/* TAB 3: TEMPLATES (MOCK) */}
-        {activeTab === 'templates' && (
-          <div className="space-y-6">
-             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-sm font-black text-slate-800">Reusable Fee Templates</h3>
-                <button className="bg-brand-primary text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-md hover:bg-brand-secondary hover:-translate-y-0.5 transition-all flex items-center gap-2">
-                  <Plus className="w-4 h-4" /> Create Template
-                </button>
-             </div>
-             
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-               {mockTemplates.map((template, idx) => (
-                 <div key={idx} className="glass-card rounded-[24px] p-6 border border-white/40 shadow-sm group hover:border-brand-primary/30 transition-all cursor-pointer">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                      <Copy className="w-5 h-5" />
-                    </div>
-                    <h4 className="text-sm font-black text-slate-800 mb-1">{template.name}</h4>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Applies to: {template.classes}</p>
-                    
-                    <div className="text-lg font-black text-slate-700 mb-6">{formatCurrency(template.amount)}</div>
-                    
-                    <button className="w-full py-2.5 rounded-xl bg-slate-50 text-brand-primary text-xs font-bold hover:bg-brand-primary hover:text-white transition-colors">
-                      Apply Template
-                    </button>
-                 </div>
-               ))}
-             </div>
-          </div>
-        )}
 
-        {/* TAB 4: SESSIONS (MOCK) */}
-        {activeTab === 'sessions' && (
-           <div className="glass-card rounded-[32px] p-8 md:p-12 border border-white/40 shadow-sm max-w-3xl">
-             <h3 className="text-xs font-black uppercase text-slate-800 tracking-wider mb-8 flex items-center gap-2">
-               <Calendar className="w-5 h-5 text-indigo-500" /> Academic Sessions
-             </h3>
-             
-             <div className="space-y-4">
-               <div className="p-5 rounded-2xl border-2 border-brand-primary/20 bg-brand-primary/5 flex justify-between items-center">
-                 <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center font-black text-brand-primary">
-                     25
-                   </div>
-                   <div>
-                     <h4 className="text-base font-black text-slate-800">2025-2026</h4>
-                     <p className="text-xs font-bold text-slate-500 mt-0.5">Currently Active • {students?.length || 0} Students Enrolled</p>
-                   </div>
-                 </div>
-                 <span className="px-3 py-1 bg-brand-primary text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-sm">
-                   Active Session
-                 </span>
-               </div>
-               
-               <div className="p-5 rounded-2xl border border-slate-200 bg-white/50 flex justify-between items-center opacity-70">
-                 <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-400">
-                     26
-                   </div>
-                   <div>
-                     <h4 className="text-base font-black text-slate-600">2026-2027</h4>
-                     <p className="text-xs font-bold text-slate-400 mt-0.5">Upcoming • Draft Mode</p>
-                   </div>
-                 </div>
-                 <button className="px-4 py-2 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-lg shadow-sm hover:text-brand-primary transition-colors">
-                   Configure
-                 </button>
-               </div>
-             </div>
-           </div>
-        )}
 
       </div>
     </div>
+
+      {/* Class Breakdown Modal */}
+      {selectedClassBreakdown && createPortal(
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h3 className="text-xl font-black text-slate-800">Grade {selectedClassBreakdown} Breakdown</h3>
+                <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">Configured Fee Categories</p>
+              </div>
+              <button 
+                onClick={() => setSelectedClassBreakdown(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-500 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 max-h-[60vh] overflow-y-auto">
+              {structures.filter(s => s.class === selectedClassBreakdown).length > 0 ? (
+                <div className="space-y-6">
+                  {/* Mandatory Fees */}
+                  <div>
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest mb-3 border-b border-slate-100 pb-2">Mandatory Fees</h4>
+                    <div className="space-y-3">
+                      {structures.filter(s => s.class === selectedClassBreakdown && !s.feeType?.isVariable).length > 0 ? (
+                        structures.filter(s => s.class === selectedClassBreakdown && !s.feeType?.isVariable).map(s => (
+                          <div key={s.id} className="flex justify-between items-center p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:shadow-sm transition-all">
+                            <div>
+                              <div className="text-sm font-bold text-slate-800">{s.feeType?.name}</div>
+                              <div className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">{s.feeType?.isRecurring ? 'Recurring' : 'One-Time'}</div>
+                            </div>
+                            <div className="text-base font-black text-emerald-600">{formatCurrency(s.feeType?.amount || 0)}</div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-xs font-medium text-slate-400 py-2">No mandatory fees.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Variable Fees */}
+                  <div>
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest mb-3 border-b border-slate-100 pb-2">Variable Fees</h4>
+                    <div className="space-y-3">
+                      {structures.filter(s => s.class === selectedClassBreakdown && s.feeType?.isVariable).length > 0 ? (
+                        structures.filter(s => s.class === selectedClassBreakdown && s.feeType?.isVariable).map(s => (
+                          <div key={s.id} className="flex justify-between items-center p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:shadow-sm transition-all border-l-2 border-l-amber-400">
+                            <div>
+                              <div className="text-sm font-bold text-slate-800">{s.feeType?.name} <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px] uppercase tracking-wider">Optional</span></div>
+                              <div className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">{s.feeType?.isRecurring ? 'Recurring' : 'One-Time'}</div>
+                            </div>
+                            <div className="text-base font-black text-emerald-600">{formatCurrency(s.feeType?.amount || 0)}</div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-xs font-medium text-slate-400 py-2">No variable fees.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center p-4 mt-4 bg-slate-800 text-white rounded-xl shadow-md">
+                    <div className="text-xs font-bold uppercase tracking-widest">Base Annual Fee</div>
+                    <div className="text-xl font-black">{formatCurrency(structures.filter(s => s.class === selectedClassBreakdown && !s.feeType?.isVariable).reduce((sum, s) => sum + Number(s.feeType?.amount || 0), 0))}</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-slate-400 text-sm font-bold">No structures found.</div>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Edit Category Modal */}
+      {editingCategory && createPortal(
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="text-lg font-black text-slate-800">Edit Fee Category</h3>
+              <button 
+                onClick={() => setEditingCategory(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-500 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleSaveEdit} className="p-6 space-y-4 text-xs font-bold text-slate-600 overflow-y-auto">
+              <div>
+                <label className="block mb-1.5 text-[10px] uppercase tracking-widest text-slate-400">Category Name *</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full glass-input text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block mb-1.5 text-[10px] uppercase tracking-widest text-slate-400">Description</label>
+                <textarea
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  className="w-full glass-input text-sm h-20 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block mb-1.5 text-[10px] uppercase tracking-widest text-slate-400">Price of Fee *</label>
+                <input
+                  type="number"
+                  value={editAmount}
+                  onChange={(e) => setEditAmount(e.target.value)}
+                  className="w-full glass-input text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block mb-1.5 text-[10px] uppercase tracking-widest text-slate-400">Due In (Days) *</label>
+                <input
+                  type="number"
+                  value={editDueDays}
+                  onChange={(e) => setEditDueDays(e.target.value)}
+                  placeholder="e.g. 5"
+                  className="w-full glass-input text-sm"
+                  required
+                />
+              </div>
+              <label className="flex items-start gap-3 cursor-pointer p-4 rounded-xl border border-slate-200/60 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={editRecurring}
+                  onChange={(e) => setEditRecurring(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-brand-primary focus:ring-brand-primary"
+                />
+                <div>
+                  <div className="text-sm font-bold text-slate-700">Recurring Fee</div>
+                  <div className="text-[10px] font-medium text-slate-500 mt-1">Check this if the fee is charged periodically.</div>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer p-4 rounded-xl border border-slate-200/60 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={editVariable}
+                  onChange={(e) => setEditVariable(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                />
+                <div>
+                  <div className="text-sm font-bold text-slate-700">Variable Fee (Optional)</div>
+                  <div className="text-[10px] font-medium text-slate-500 mt-1">Check this if the fee is optional and applied per student.</div>
+                </div>
+              </label>
+              
+              {editRecurring && (
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label className="block mb-1.5 text-[10px] uppercase tracking-widest text-slate-400">Interval (in Days) *</label>
+                  <input
+                    type="number"
+                    value={editRecurringInterval}
+                    onChange={(e) => setEditRecurringInterval(e.target.value)}
+                    placeholder="e.g. 30 for Monthly"
+                    className="w-full glass-input text-sm"
+                    required
+                  />
+                </div>
+              )}
+              
+              <button
+                type="submit"
+                disabled={updateFeeTypeMutation.isPending}
+                className="w-full glass-btn-primary py-3 mt-4 text-sm"
+              >
+                {updateFeeTypeMutation.isPending ? 'Saving...' : 'Save Changes'}
+              </button>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Create Category Modal */}
+      {showCreateCategoryModal && createPortal(
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                <Plus className="w-5 h-5 text-indigo-500" /> Create Category
+              </h3>
+              <button 
+                onClick={() => setShowCreateCategoryModal(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-500 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={localHandleCreate} className="p-6 space-y-4 text-xs font-bold text-slate-600 overflow-y-auto">
+              <div>
+                <label className="block mb-1.5 text-[10px] uppercase tracking-widest text-slate-400">Category Name *</label>
+                <input
+                  type="text"
+                  value={typeName}
+                  onChange={(e) => setTypeName(e.target.value)}
+                  placeholder="e.g. Tuition Fee"
+                  className="w-full glass-input text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block mb-1.5 text-[10px] uppercase tracking-widest text-slate-400">Description</label>
+                <textarea
+                  value={typeDesc}
+                  onChange={(e) => setTypeDesc(e.target.value)}
+                  placeholder="Brief description of this fee (optional)"
+                  className="w-full glass-input text-sm h-20 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block mb-1.5 text-[10px] uppercase tracking-widest text-slate-400">Price of Fee *</label>
+                <input
+                  type="number"
+                  value={typeAmount}
+                  onChange={(e) => setTypeAmount(e.target.value)}
+                  placeholder="e.g. 5000"
+                  className="w-full glass-input text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block mb-1.5 text-[10px] uppercase tracking-widest text-slate-400">Due In (Days) *</label>
+                <input
+                  type="number"
+                  value={typeDueDays}
+                  onChange={(e) => setTypeDueDays(e.target.value)}
+                  placeholder="e.g. 5"
+                  className="w-full glass-input text-sm"
+                  required
+                />
+              </div>
+              <label className="flex items-start gap-3 cursor-pointer p-4 rounded-xl border border-slate-200/60 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={typeRecurring}
+                  onChange={(e) => setTypeRecurring(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-brand-primary focus:ring-brand-primary"
+                />
+                <div>
+                  <div className="text-sm font-bold text-slate-700">Recurring Fee</div>
+                  <div className="text-[10px] font-medium text-slate-500 mt-1">Check this if the fee is charged periodically.</div>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer p-4 rounded-xl border border-slate-200/60 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={typeVariable}
+                  onChange={(e) => setTypeVariable(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                />
+                <div>
+                  <div className="text-sm font-bold text-slate-700">Variable Fee (Optional)</div>
+                  <div className="text-[10px] font-medium text-slate-500 mt-1">Check this if the fee is optional and applied per student.</div>
+                </div>
+              </label>
+              
+              {typeRecurring && (
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label className="block mb-1.5 text-[10px] uppercase tracking-widest text-slate-400">Interval (in Days) *</label>
+                  <input
+                    type="number"
+                    value={typeRecurringInterval}
+                    onChange={(e) => setTypeRecurringInterval(e.target.value)}
+                    placeholder="e.g. 30 for Monthly"
+                    className="w-full glass-input text-sm"
+                    required
+                  />
+                </div>
+              )}
+              
+              <button
+                type="submit"
+                disabled={createFeeTypeMutation.isPending}
+                className="w-full glass-btn-primary py-3 mt-4 text-sm flex items-center justify-center gap-2"
+              >
+                {createFeeTypeMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save Category'}
+              </button>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+    </>
   );
 }

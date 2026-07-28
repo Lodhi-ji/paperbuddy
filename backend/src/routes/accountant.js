@@ -4,7 +4,8 @@ import {
   recordManualTransaction,
   reconcileCheque,
   getDashboardMetrics,
-  getTransactionsList
+  getTransactionsList,
+  recordBulkTransaction
 } from '../controllers/accountant.js';
 import { verifyJWT, attachSchoolScope, checkRole, checkPermission } from '../middlewares/auth.js';
 
@@ -22,6 +23,7 @@ router.get('/transactions', getTransactionsList);
 
 // Payment Recording
 router.post('/transactions', checkPermission('can_record_payment'), recordManualTransaction);
+router.post('/transactions/bulk', checkPermission('can_record_payment'), recordBulkTransaction);
 
 // Cheque Reconciliation
 router.patch('/transactions/:id/reconcile', checkPermission('can_reconcile_cheque'), reconcileCheque);
