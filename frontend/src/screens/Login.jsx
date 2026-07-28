@@ -64,7 +64,11 @@ export default function Login() {
             setAuthStep('welcome');
             setTimeout(() => {
               loginStore(data.user, data.accessToken, data.refreshToken);
-              navigate('/');
+              if (data.user.role === 'SUPER_ADMIN') navigate('/super-admin');
+              else if (data.user.role === 'SCHOOL_ADMIN') navigate('/school-admin');
+              else if (data.user.role === 'ACCOUNTANT') navigate('/accountant');
+              else if (data.user.role === 'STUDENT') navigate('/student');
+              else navigate('/');
             }, 600);
           }, 700);
         }, 700);

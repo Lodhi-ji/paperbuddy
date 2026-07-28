@@ -12,6 +12,7 @@ import SuperAdminDashboard from './screens/SuperAdminDashboard';
 import SchoolAdminDashboard from './screens/SchoolAdminDashboard';
 import AccountantDashboard from './screens/AccountantDashboard';
 import StudentDashboard from './screens/StudentDashboard';
+import LandingPage from './screens/LandingPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -102,7 +103,7 @@ export default function App() {
           />
 
           {/* Wildcard / Fallback redirects */}
-          <Route path="/" element={<HomeRedirect />} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
