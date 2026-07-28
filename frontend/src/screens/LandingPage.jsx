@@ -719,25 +719,41 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Video Demo Section */}
-      <section className="relative z-10 py-32 border-t border-slate-900">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-[10px] font-black text-[#5B5CEB] uppercase tracking-widest mb-3">Watch Demo</h2>
-            <h3 className="text-2xl md:text-3xl font-black text-white tracking-tight">
-              See CampusPay in Action
-            </h3>
-          </div>
-          
-          <div className="relative aspect-video rounded-3xl overflow-hidden border border-slate-800 bg-[#0F1224]/80 shadow-[0_20px_50px_-15px_rgba(91,92,235,0.2)] backdrop-blur-md group cursor-pointer flex items-center justify-center">
-            {/* Play Button Overlay */}
-            <div className="absolute inset-0 bg-slate-950/20 group-hover:bg-slate-950/40 transition-colors z-10 flex items-center justify-center">
-              <div className="w-20 h-20 rounded-full bg-[#5B5CEB]/90 text-white flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform duration-300">
-                <div className="w-0 h-0 border-t-8 border-t-transparent border-l-[14px] border-l-white border-b-8 border-b-transparent ml-1"></div>
+      {/* Stats & Trust Section */}
+      <section className="relative z-10 py-20 border-t border-slate-900">
+        <div className="max-w-5xl mx-auto px-6">
+
+          {/* Stats Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-14">
+            {[
+              { value: '₹2.4Cr+', label: 'Fees Processed', sub: 'across institutions' },
+              { value: '3,800+', label: 'Students Managed', sub: 'active on platform' },
+              { value: '99.9%', label: 'Uptime SLA', sub: 'enterprise grade' },
+              { value: '<2s', label: 'Reconciliation', sub: 'real-time ledger sync' },
+            ].map((stat, i) => (
+              <div key={i} className="p-5 rounded-2xl border border-slate-800 bg-[#0F1224]/60 text-center hover:border-[#5B5CEB]/30 transition-colors">
+                <div className="text-2xl md:text-3xl font-black text-white mb-1">{stat.value}</div>
+                <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">{stat.label}</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">{stat.sub}</div>
               </div>
-            </div>
-            {/* Minimalist Grid Pattern for Placeholder */}
-            <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
+            ))}
+          </div>
+
+          {/* Trust Badges */}
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {[
+              { icon: '🔒', text: '256-bit SSL Encryption' },
+              { icon: '✅', text: 'PCI-DSS Ready' },
+              { icon: '🏦', text: 'Multi-Bank Support' },
+              { icon: '📊', text: 'Real-time Audit Logs' },
+              { icon: '☁️', text: 'Cloud Hosted' },
+              { icon: '📱', text: 'UPI & Card Payments' },
+            ].map((badge, i) => (
+              <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full border border-slate-800 bg-slate-900/50 text-slate-400 text-[11px] font-bold">
+                <span>{badge.icon}</span>
+                <span>{badge.text}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
