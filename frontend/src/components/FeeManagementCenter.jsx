@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
+import toast from 'react-hot-toast';
 import { 
   Layers, 
   Plus, 
@@ -76,7 +77,7 @@ export default function FeeManagementCenter({
     if (window.confirm("Are you seriously sure you want to delete this Category? If it is already assigned to a class structure, the deletion will fail to protect student data.")) {
       deleteFeeTypeMutation.mutate(typeId, {
         onError: (err) => {
-          alert(`Failed to delete: ${err.response?.data?.error || err.message}`);
+          toast.error(`Failed to delete: ${err.response?.data?.error || err.message}`);
         }
       });
     }

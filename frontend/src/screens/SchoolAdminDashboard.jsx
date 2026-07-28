@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { api } from '../api';
 import { useAuthStore } from '../store/authStore';
 import Header from '../components/Header';
@@ -287,9 +288,12 @@ export default function SchoolAdminDashboard() {
       setActiveTab('students-all');
       queryClient.invalidateQueries({ queryKey: ['schoolStudents'] });
       queryClient.invalidateQueries({ queryKey: ['schoolMetrics'] });
+      setShowStudentModal(false);
+      setNewStudent({ name: '', email: '', rollNumber: '', class: '' });
+      toast.success('Student registered successfully!');
     },
     onError: (err) => {
-      alert(err.message || 'Failed to register student');
+      toast.error(err.message || 'Failed to register student');
     }
   });
 
@@ -316,9 +320,12 @@ export default function SchoolAdminDashboard() {
       setActiveTab('students-all');
       queryClient.invalidateQueries({ queryKey: ['schoolStudents'] });
       queryClient.invalidateQueries({ queryKey: ['schoolMetrics'] });
+      setShowStudentModal(false);
+      setNewStudent({ name: '', email: '', rollNumber: '', class: '' });
+      toast.success('Student updated successfully!');
     },
     onError: (err) => {
-      alert(err.message || 'Failed to update student');
+      toast.error(err.message || 'Failed to update student');
     }
   });
 
@@ -520,8 +527,9 @@ export default function SchoolAdminDashboard() {
       setExcelFile(null);
       queryClient.invalidateQueries({ queryKey: ['schoolStudents'] });
       queryClient.invalidateQueries({ queryKey: ['schoolMetrics'] });
+      toast.success('Excel upload successful!');
     } catch (err) {
-      alert(err.message || 'Excel upload failed');
+      toast.error(err.message || 'Excel upload failed');
     } finally {
       setUploadLoading(false);
     }

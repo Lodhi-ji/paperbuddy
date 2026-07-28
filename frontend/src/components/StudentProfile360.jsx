@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import {
   ChevronLeft,
   Calendar,
@@ -69,7 +70,7 @@ export default function StudentProfile360({ student, onClose, onEdit, onDelete, 
 
   const handleReceiptClick = (fee) => {
     if (fee.status === 'UNPAID') {
-      alert('Fees not paid till now');
+      toast.error('Fees not paid till now');
     } else {
       setSelectedReceiptFee(fee);
     }
