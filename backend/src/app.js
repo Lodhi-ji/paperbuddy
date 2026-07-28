@@ -12,6 +12,7 @@ import superAdminRouter from './routes/superAdmin.js';
 import schoolAdminRouter from './routes/schoolAdmin.js';
 import accountantRouter from './routes/accountant.js';
 import studentRouter from './routes/student.js';
+import messageRouter from './routes/messages.js';
 import { apiLimiter } from './middlewares/rateLimit.js';
 
 const app = express();
@@ -45,6 +46,7 @@ app.use('/api/super-admin', superAdminRouter);
 app.use('/api/school-admin', schoolAdminRouter);
 app.use('/api/accountant', accountantRouter);
 app.use('/api/student', studentRouter);
+app.use('/api/messages', messageRouter);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

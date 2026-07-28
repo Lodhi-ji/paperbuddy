@@ -12,7 +12,8 @@ import {
   Menu,
   ChevronLeft,
   ChevronRight,
-  School
+  School,
+  MessageSquare
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
@@ -44,6 +45,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
     { id: 'waivers', label: 'Financial Adjustments', icon: BarChart3 },
     { id: 'transactions', label: 'Transaction Center', icon: Receipt },
     { id: 'accountants', label: 'Staff Accounts', icon: ShieldCheck },
+    { id: 'messages', label: 'Messages', icon: MessageSquare },
   ];
 
   const bottomItems = [

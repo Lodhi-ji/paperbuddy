@@ -8,6 +8,7 @@ import StudentProfile360 from '../components/StudentProfile360';
 import FeeManagementCenter from '../components/FeeManagementCenter';
 import FinancialAdjustmentsWorkspace from '../components/FinancialAdjustmentsWorkspace';
 import TransactionCenter from '../components/TransactionCenter';
+import MessagesView from '../components/MessagesView';
 import {
   IndianRupee,
   Users,
@@ -129,6 +130,7 @@ export default function SchoolAdminDashboard() {
 
   // Student Profile detail view state
   const [profileStudentId, setProfileStudentId] = useState(null);
+  const [profileStudentTab, setProfileStudentTab] = useState('overview');
 
   const { data: transactions, isLoading: txnsLoading } = useQuery({
     queryKey: ['adminTransactions', txnSearch, txnMethod, txnStatus],
@@ -685,31 +687,45 @@ export default function SchoolAdminDashboard() {
                     <button className="text-xs font-bold text-brand-primary hover:underline">View All</button>
                   </div>
                   <div className="space-y-5">
-                    {[
-                      { id: 1, title: 'Rahul Sharma paid Tuition Fee', time: '10 minutes ago', amount: '+ ₹4,500', type: 'success' },
-                      { id: 2, title: 'Transport Fee Updated', time: '2 hours ago', type: 'info' },
-                      { id: 3, title: 'Sneha Sen paid Lab Fee', time: '3 hours ago', amount: '+ ₹1,200', type: 'success' },
-                      { id: 4, title: 'New Student Profile Added', time: '5 hours ago', type: 'info' },
-                      { id: 5, title: 'Payment Reminder Sent to 18 users', time: '1 day ago', type: 'warning' },
-                    ].map(activity => (
-                      <div key={activity.id} className="flex items-center gap-4">
-                        <div className={`w-2 h-2 rounded-full shadow-sm shrink-0 ${
-                          activity.type === 'success' ? 'bg-emerald-500' :
-                          activity.type === 'warning' ? 'bg-amber-500' : 'bg-brand-primary'
-                        }`} />
-                        <div className="flex-1 flex justify-between items-center">
-                          <div>
-                            <p className="text-xs font-bold text-slate-800">{activity.title}</p>
-                            <p className="text-[10px] font-semibold text-slate-400">{activity.time}</p>
+                    {metricsLoading ? (
+                      <div className="flex justify-center py-4"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+                    ) : metrics?.recentTransactions && metrics.recentTransactions.length > 0 ? (
+                      metrics.recentTransactions.map(activity => {
+                        const timeAgo = (dateStr) => {
+                          const diff = new Date() - new Date(dateStr);
+                          const minutes = Math.floor(diff / 60000);
+                          if (minutes < 60) return `${minutes} minutes ago`;
+                          const hours = Math.floor(minutes / 60);
+                          if (hours < 24) return `${hours} hours ago`;
+                          return `${Math.floor(hours / 24)} days ago`;
+                        };
+                        return (
+                          <div key={activity.id} className="flex items-center gap-4">
+                            <div className={`w-2 h-2 rounded-full shadow-sm shrink-0 ${
+                              activity.status === 'SUCCESS' || activity.status === 'CLEARED' ? 'bg-emerald-500' :
+                              activity.status === 'PENDING' ? 'bg-amber-500' : 'bg-rose-500'
+                            }`} />
+                            <div className="flex-1 flex justify-between items-center">
+                              <div>
+                                <p className="text-xs font-bold text-slate-800">{activity.studentName} paid {activity.feeName}</p>
+                                <p className="text-[10px] font-semibold text-slate-400">{timeAgo(activity.date)}</p>
+                              </div>
+                              {activity.amount > 0 && (
+                                <span className={`text-xs font-black px-2 py-1 rounded-lg border ${
+                                  activity.status === 'SUCCESS' || activity.status === 'CLEARED' ? 'text-emerald-600 bg-emerald-50 border-emerald-100' :
+                                  activity.status === 'PENDING' ? 'text-amber-600 bg-amber-50 border-amber-100' : 'text-rose-600 bg-rose-50 border-rose-100'
+                                }`}>
+                                  {activity.status === 'SUCCESS' || activity.status === 'CLEARED' ? '+' : ''} {formatCurrency(activity.amount)}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          {activity.amount && (
-                            <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">
-                              {activity.amount}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                        );
+                      })
+                    ) : (
+                      <div className="text-xs font-semibold text-slate-400 text-center py-4">No recent activity found.</div>
+                    )}
+
                   </div>
                 </div>
 
@@ -719,31 +735,45 @@ export default function SchoolAdminDashboard() {
                   <div className="glass-card rounded-[24px] p-6 border border-white/60 shadow-glass bg-gradient-to-br from-indigo-600 to-indigo-800 text-white relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
                     <h4 className="text-[11px] font-bold text-indigo-200 uppercase tracking-wider mb-1">Today's Collection</h4>
-                    <h2 className="text-3xl font-black tracking-tight">₹12,500</h2>
+                    <h2 className="text-3xl font-black tracking-tight">
+                      {txnsLoading ? <Loader2 className="w-6 h-6 animate-spin text-white" /> : formatCurrency(
+                        (transactions || []).reduce((acc, t) => {
+                          if ((t.status === 'SUCCESS' || t.status === 'CLEARED') && new Date(t.createdAt).toDateString() === new Date().toDateString()) {
+                            return acc + Number(t.amount);
+                          }
+                          return acc;
+                        }, 0)
+                      )}
+                    </h2>
                     <p className="text-xs font-medium text-indigo-100 mt-2 flex items-center gap-1.5">
-                      <Receipt className="w-4 h-4" /> 12 receipts generated
+                      <Receipt className="w-4 h-4" /> {
+                        (transactions || []).filter(t => (t.status === 'SUCCESS' || t.status === 'CLEARED') && new Date(t.createdAt).toDateString() === new Date().toDateString()).length
+                      } receipts generated
                     </p>
                   </div>
 
-                  {/* Upcoming Dues */}
+                  {/* Upcoming Dues / Overdue */}
                   <div className="glass-card rounded-[24px] p-6 border border-white/60 shadow-glass">
-                    <h3 className="text-sm font-black text-slate-800 tracking-tight mb-4">Upcoming Due Alerts</h3>
+                    <h3 className="text-sm font-black text-slate-800 tracking-tight mb-4">Overdue Alerts</h3>
                     <div className="space-y-3">
-                      {[
-                        { id: 1, category: 'Grade 10 Tuition', amount: '₹54,000', students: 12, dueDate: '3 Days' },
-                        { id: 2, category: 'Transport Fee (Q3)', amount: '₹15,000', students: 10, dueDate: '1 Week' },
-                      ].map(due => (
-                        <div key={due.id} className="p-3 bg-rose-50/50 border border-rose-100/50 rounded-2xl flex justify-between items-center transition-all hover:bg-rose-50">
-                          <div>
-                            <p className="text-xs font-bold text-slate-800">{due.category}</p>
-                            <p className="text-[10px] font-semibold text-rose-500 mt-0.5">Due in {due.dueDate}</p>
+                      {metricsLoading ? (
+                        <div className="flex justify-center py-4"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+                      ) : metrics?.defaultersList && metrics.defaultersList.length > 0 ? (
+                        metrics.defaultersList.slice(0, 3).map(due => (
+                          <div key={due.id} className="p-3 bg-rose-50/50 border border-rose-100/50 rounded-2xl flex justify-between items-center transition-all hover:bg-rose-50">
+                            <div>
+                              <p className="text-xs font-bold text-slate-800">{due.student.user.name}</p>
+                              <p className="text-[10px] font-semibold text-rose-500 mt-0.5">{due.feeStructure.feeType.name}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs font-black text-rose-600">{formatCurrency(Number(due.amountDue) + Number(due.penaltyAmount) - Number(due.waiverAmount) - Number(due.amountPaid))}</p>
+                              <p className="text-[9px] font-bold text-slate-400">Due {new Date(due.dueDate).toLocaleDateString()}</p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-xs font-black text-rose-600">{due.amount}</p>
-                            <p className="text-[9px] font-bold text-slate-400">{due.students} students</p>
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                      ) : (
+                         <div className="text-xs font-semibold text-slate-400 text-center py-4">No overdue fees found.</div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -917,16 +947,17 @@ export default function SchoolAdminDashboard() {
                             <td className="py-4 pr-6 pl-3">
                               <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button 
-                                  onClick={() => setProfileStudentId(st.id)}
+                                  onClick={() => { setProfileStudentTab('overview'); setProfileStudentId(st.id); }}
                                   className="p-1.5 text-slate-400 hover:text-brand-primary hover:bg-brand-primary/10 rounded-lg transition-colors"
                                   title="View Profile"
                                 >
                                   <Eye className="w-4 h-4" />
                                 </button>
-                                <button className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit Student">
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                                <button className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Fee Records">
+                                <button 
+                                  onClick={() => { setProfileStudentTab('fees'); setProfileStudentId(st.id); }}
+                                  className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" 
+                                  title="Fee Records"
+                                >
                                   <CreditCard className="w-4 h-4" />
                                 </button>
                                 <button className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" title="More Options">
@@ -1646,8 +1677,11 @@ export default function SchoolAdminDashboard() {
       {profileStudentId && (() => {
         const student = students?.find(s => s.id === profileStudentId);
         if (!student) return null;
-        return <StudentProfile360 student={student} onClose={() => setProfileStudentId(null)} />;
+        return <StudentProfile360 student={student} onClose={() => setProfileStudentId(null)} initialTab={profileStudentTab} />;
       })()}
+
+      {/* MESSAGES VIEW */}
+      {activeTab === 'messages' && <MessagesView />}
 
       </main>
     </div>

@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/authStore';
 import Header from '../components/Header';
 import PrintReceipt from '../components/PrintReceipt';
 import StudentProfile360 from '../components/StudentProfile360';
+import MessagesView from '../components/MessagesView';
 import {
   IndianRupee,
   Users,
@@ -292,10 +293,20 @@ export default function AccountantDashboard() {
           >
             Student Directory
           </button>
+          <button 
+            onClick={() => setViewMode('MESSAGES')}
+            className={`px-8 py-3 rounded-xl text-sm font-black uppercase tracking-widest transition-all ${
+              viewMode === 'MESSAGES' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Messages
+          </button>
         </div>
       </div>
 
-      {viewMode === 'POS' ? (
+      {viewMode === 'MESSAGES' ? (
+        <MessagesView />
+      ) : viewMode === 'POS' ? (
         <>
           {/* ──────────────────────────────────────────────────────── */}
           {/* HERO CTA */}

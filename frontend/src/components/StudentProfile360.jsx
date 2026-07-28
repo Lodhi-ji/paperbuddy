@@ -37,8 +37,9 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from 'recharts';
+import MessagesView from './MessagesView';
 
-const formatCurrency = (amount) => {
+const formatCurrencyLegacy = (amount) => {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
@@ -46,8 +47,8 @@ const formatCurrency = (amount) => {
   }).format(amount);
 };
 
-export default function StudentProfile360({ student, onClose }) {
-  const [activeTab, setActiveTab] = useState('overview');
+export default function StudentProfile360({ student, onClose, initialTab = 'overview' }) {
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
@@ -79,7 +80,7 @@ export default function StudentProfile360({ student, onClose }) {
   const healthScore = totalBilled > 0 ? Math.round(((totalBilled - totalOutstanding) / totalBilled) * 100) : null;
 
   return (
-    <div className="absolute inset-0 bg-slate-50/95 backdrop-blur-xl z-[50] overflow-y-auto no-scrollbar animate-in slide-in-from-right-8 duration-300">
+    <div className="fixed inset-0 bg-slate-50 z-[100] overflow-y-auto no-scrollbar animate-in slide-in-from-right-8 duration-300">
       <div className="max-w-7xl mx-auto p-6 md:p-10 space-y-8">
         
         {/* Header Section */}
@@ -334,19 +335,19 @@ export default function StudentProfile360({ student, onClose }) {
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                       <IndianRupee className="w-3.5 h-3.5 text-slate-400" /> Total Fees
                     </div>
-                    <div className="text-2xl font-black text-slate-800">{formatCurrency(totalBilled)}</div>
+                    <div className="text-2xl font-black text-slate-800">{formatCurrencyLegacy(totalBilled)}</div>
                   </div>
                   <div className="bg-emerald-50/50 rounded-2xl p-5 border border-emerald-100/50 shadow-sm">
                     <div className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Paid Amount
                     </div>
-                    <div className="text-2xl font-black text-emerald-600">{formatCurrency(totalPaid)}</div>
+                    <div className="text-2xl font-black text-emerald-600">{formatCurrencyLegacy(totalPaid)}</div>
                   </div>
                   <div className="bg-rose-50/50 rounded-2xl p-5 border border-rose-100/50 shadow-sm">
                     <div className="text-[10px] font-bold text-rose-500/70 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                       <AlertCircle className="w-3.5 h-3.5 text-rose-500" /> Outstanding
                     </div>
-                    <div className="text-2xl font-black text-rose-600">{formatCurrency(totalOutstanding)}</div>
+                    <div className="text-2xl font-black text-rose-600">{formatCurrencyLegacy(totalOutstanding)}</div>
                   </div>
                   <div className="bg-blue-50/50 rounded-2xl p-5 border border-blue-100/50 shadow-sm">
                     <div className="text-[10px] font-bold text-blue-600/70 uppercase tracking-widest mb-2 flex items-center gap-1.5">
@@ -378,11 +379,11 @@ export default function StudentProfile360({ student, onClose }) {
                   </div>
                   <span className="text-xs font-bold text-slate-700">Send Reminder</span>
                 </button>
-                <button className="glass-card rounded-2xl p-5 border border-white/40 shadow-sm flex flex-col items-center justify-center gap-3 hover:-translate-y-1 hover:shadow-md hover:border-brand-primary/30 transition-all group">
+                <button onClick={() => setActiveTab('communication')} className="glass-card rounded-2xl p-5 border border-white/40 shadow-sm flex flex-col items-center justify-center gap-3 hover:-translate-y-1 hover:shadow-md hover:border-brand-primary/30 transition-all group">
                   <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
                     <MessageSquare className="w-5 h-5" />
                   </div>
-                  <span className="text-xs font-bold text-slate-700">Message Guardian</span>
+                  <span className="text-xs font-bold text-slate-700">Message</span>
                 </button>
               </div>
 
@@ -410,8 +411,8 @@ export default function StudentProfile360({ student, onClose }) {
                               {new Date(fee.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </td>
                             <td className="py-4 px-3 font-bold text-slate-800">{fee.feeStructure.feeType.name}</td>
-                            <td className="py-4 px-3 font-mono text-slate-600">{formatCurrency(Number(fee.amountDue) + Number(fee.penaltyAmount))}</td>
-                            <td className="py-4 px-3 font-mono text-emerald-600 font-bold">{formatCurrency(Number(fee.amountPaid))}</td>
+                            <td className="py-4 px-3 font-mono text-slate-600">{formatCurrencyLegacy(Number(fee.amountDue) + Number(fee.penaltyAmount))}</td>
+                            <td className="py-4 px-3 font-mono text-emerald-600 font-bold">{formatCurrencyLegacy(Number(fee.amountPaid))}</td>
                             <td className="py-4 px-3">
                               <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold border ${
                                 fee.status === 'PAID' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
@@ -468,14 +469,10 @@ export default function StudentProfile360({ student, onClose }) {
              </div>
           )}
 
-          {/* COMMUNICATION TAB (MOCK) */}
+          {/* COMMUNICATION TAB */}
           {activeTab === 'communication' && (
-             <div className="glass-card rounded-[24px] p-8 border border-white/40 shadow-sm text-center py-32 bg-white/50">
-               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-100 shadow-inner">
-                 <Mail className="w-10 h-10 text-slate-300" />
-               </div>
-               <h3 className="text-lg font-black text-slate-700 mb-2">Communication Hub</h3>
-               <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">Track all SMS, Email, and WhatsApp messages sent to parents from this centralized hub.</p>
+             <div className="glass-card rounded-[24px] p-2 border border-white/40 shadow-sm bg-white/50">
+               <MessagesView standaloneContactId={student.userId} />
              </div>
           )}
 

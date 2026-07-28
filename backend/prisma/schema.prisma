@@ -66,6 +66,7 @@ model School {
   studentFees  StudentFee[]
   transactions Transaction[]
   invites      Invite[]
+  messages     Message[]
 }
 
 model User {
@@ -84,6 +85,8 @@ model User {
   // Relations
   studentProfile Student?
   invitesCreated Invite[] @relation("InviteCreator")
+  messagesSent   Message[] @relation("MessageSender")
+  messagesReceived Message[] @relation("MessageReceiver")
 }
 
 model Student {
@@ -202,4 +205,20 @@ model Invite {
   createdBy User     @relation("InviteCreator", fields: [createdById], references: [id])
 
   @@index([schoolId])
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id])
+  senderId    String
+  sender      User     @relation("MessageSender", fields: [senderId], references: [id])
+  receiverId  String
+  receiver    User     @relation("MessageReceiver", fields: [receiverId], references: [id])
+  content     String   @db.Text
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([schoolId])
+  @@index([senderId, receiverId])
 }

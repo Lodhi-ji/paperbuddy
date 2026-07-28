@@ -5,6 +5,7 @@ import { api } from '../api';
 import { useAuthStore } from '../store/authStore';
 import Header from '../components/Header';
 import PrintReceipt from '../components/PrintReceipt';
+import MessagesView from '../components/MessagesView';
 import {
   Home,
   FileText,
@@ -230,7 +231,8 @@ export default function StudentDashboard() {
   const totalPayableAmount = selectedFee ? (Number(selectedFee.amountDue) + Number(selectedFee.penaltyAmount) - Number(selectedFee.amountPaid) - Number(selectedFee.waiverAmount)) : 0;
 
   return (
-    <div className="max-w-[800px] mx-auto px-4 pb-24 pt-4 min-h-screen bg-[#F8FAFC] text-[#111827] font-sans flex flex-col justify-between">
+    <div className="max-w-[800px] mx-auto px-4 pb-24 pt-4 min-h-screen bg-gradient-to-br from-indigo-50/50 via-white to-purple-50/30 text-[#111827] font-sans flex flex-col justify-between relative">
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none"></div>
       
       {/* Embed Custom Styles for flips, confetti, and money wave animations */}
       <style>{`
@@ -271,7 +273,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* DESKTOP TOP NAV BAR */}
-      <nav className="no-print hidden md:flex items-center justify-center gap-1 bg-white p-1 rounded-xl w-fit mx-auto mb-8 border border-[#E5E7EB] shadow-sm">
+      <nav className="no-print hidden md:flex items-center justify-center gap-1.5 bg-white/70 backdrop-blur-lg p-1.5 rounded-2xl w-fit mx-auto mb-8 border border-white shadow-sm">
         {[
           { k: 'home', label: 'Home' },
           { k: 'invoices', label: 'Invoices' },
@@ -281,8 +283,8 @@ export default function StudentDashboard() {
           <button 
             key={tab.k}
             onClick={() => setActiveTab(tab.k)}
-            className={`px-6 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all ${
-              activeTab === tab.k ? 'bg-[#5B5CEB] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            className={`px-8 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
+              activeTab === tab.k ? 'bg-indigo-600 text-white shadow-md scale-[1.02]' : 'text-slate-500 hover:text-indigo-600 hover:bg-white/50'
             }`}
           >
             {tab.label}
@@ -307,18 +309,21 @@ export default function StudentDashboard() {
             </div>
 
             {/* HERO OUTSTANDING BANNER (Stripe Style flat card) */}
-            <div className="relative overflow-hidden rounded-xl p-6 bg-white border border-[#E5E7EB] text-[#111827] shadow-sm flex flex-col justify-between min-h-[160px]">
-              <div className="space-y-1">
-                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Outstanding Balance</span>
-                <div className="text-3xl font-black font-mono tracking-tight text-[#111827]">
+            <div className="relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-indigo-900 via-indigo-800 to-violet-900 text-white shadow-2xl shadow-indigo-900/20 flex flex-col justify-between min-h-[180px] group hover:-translate-y-1 transition-transform duration-300">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:scale-110 transition-transform duration-700"></div>
+              <div className="space-y-1 relative z-10">
+                <span className="text-[10px] text-indigo-200 font-bold uppercase tracking-widest">Outstanding Balance</span>
+                <div className="text-4xl font-black font-mono tracking-tight text-white drop-shadow-sm">
                   {formatCurrency(visualOutstanding)}
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6 pt-4 border-t border-[#E5E7EB]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-8 pt-6 border-t border-indigo-500/30 relative z-10">
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-amber-500" />
-                  <span className="text-xs font-semibold text-slate-600">Due in 5 Days</span>
+                  <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center">
+                    <Clock className="w-3.5 h-3.5 text-amber-400" />
+                  </div>
+                  <span className="text-xs font-bold text-indigo-100">Due in 5 Days</span>
                 </div>
                 {calculations.outstanding > 0 ? (
                   <button 
@@ -326,13 +331,13 @@ export default function StudentDashboard() {
                       const firstPending = fees?.find(f => Number(f.amountDue) > Number(f.amountPaid));
                       if (firstPending) handleStartPayment(firstPending);
                     }}
-                    className="bg-[#5B5CEB] hover:bg-[#4a4bd1] text-white px-6 py-2.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto"
+                    className="bg-white hover:bg-indigo-50 text-indigo-900 px-8 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_25px_rgba(255,255,255,0.5)] active:scale-[0.98] w-full sm:w-auto"
                   >
                     Pay Now
                   </button>
                 ) : (
-                  <span className="text-xs text-[#10B981] font-bold uppercase tracking-wider">
-                    <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> All Dues Paid</span>
+                  <span className="text-xs text-emerald-400 font-black uppercase tracking-widest bg-emerald-400/10 px-4 py-2 rounded-lg backdrop-blur-sm">
+                    <span className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> All Dues Paid</span>
                   </span>
                 )}
               </div>
@@ -340,28 +345,34 @@ export default function StudentDashboard() {
 
             {/* Wallet Metric Cards (Three columns - Clean styling) */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white p-5 rounded-xl border border-[#E5E7EB] shadow-sm flex flex-col justify-between min-h-[100px]">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5"><FileText className="w-3 h-3" /> Receipts</span>
-                <span className="text-sm font-extrabold text-[#111827] mt-1.5">
-                  {transactions?.length || 0} Available
+              <div className="bg-white/70 backdrop-blur-xl p-5 rounded-2xl border border-white shadow-sm flex flex-col justify-between min-h-[110px] hover:-translate-y-1 hover:shadow-md transition-all group">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform"><FileText className="w-3 h-3 text-blue-500" /></div> Receipts
                 </span>
-                <span className="text-[8px] text-slate-450 text-slate-400 mt-1 font-medium">Download Anytime</span>
+                <span className="text-lg font-black text-slate-800 mt-2">
+                  {transactions?.length || 0}
+                </span>
+                <span className="text-[9px] text-slate-400 mt-1 font-semibold uppercase tracking-wide">Available Downloads</span>
               </div>
 
-              <div className="bg-white p-5 rounded-xl border border-[#E5E7EB] shadow-sm flex flex-col justify-between min-h-[100px]">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5"><Banknote className="w-3 h-3" /> Waivers</span>
-                <span className="text-sm font-extrabold text-[#111827] mt-1.5">
+              <div className="bg-white/70 backdrop-blur-xl p-5 rounded-2xl border border-white shadow-sm flex flex-col justify-between min-h-[110px] hover:-translate-y-1 hover:shadow-md transition-all group">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center group-hover:scale-110 transition-transform"><Banknote className="w-3 h-3 text-emerald-500" /></div> Waivers
+                </span>
+                <span className="text-lg font-black text-slate-800 mt-2">
                   {formatCurrency(calculations.waiversTotal)}
                 </span>
-                <span className="text-[8px] text-[#10B981] font-bold mt-1">Applied</span>
+                <span className="text-[9px] text-emerald-500 font-bold mt-1 uppercase tracking-wide">Applied Total</span>
               </div>
 
-              <div className="bg-white p-5 rounded-xl border border-[#E5E7EB] shadow-sm flex flex-col justify-between min-h-[100px]">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5"><Calendar className="w-3 h-3" /> Upcoming</span>
-                <span className="text-sm font-extrabold text-[#111827] mt-1.5">
+              <div className="bg-white/70 backdrop-blur-xl p-5 rounded-2xl border border-white shadow-sm flex flex-col justify-between min-h-[110px] hover:-translate-y-1 hover:shadow-md transition-all group">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-amber-50 flex items-center justify-center group-hover:scale-110 transition-transform"><Calendar className="w-3 h-3 text-amber-500" /></div> Upcoming
+                </span>
+                <span className="text-lg font-black text-slate-800 mt-2">
                   {calculations.activeInvoicesCount} Fees
                 </span>
-                <span className="text-[8px] text-slate-450 text-slate-400 mt-1 font-medium">31 Jul & 15 Aug</span>
+                <span className="text-[9px] text-slate-400 mt-1 font-semibold uppercase tracking-wide">Pending Due</span>
               </div>
             </div>
 
@@ -382,23 +393,28 @@ export default function StudentDashboard() {
                     return (
                       <div 
                         key={fee.id}
-                        className="bg-white rounded-xl p-4 border border-[#E5E7EB] shadow-sm flex justify-between items-center hover:border-slate-300 transition-colors"
+                        className="bg-white/60 backdrop-blur-lg rounded-2xl p-5 border border-white shadow-sm flex justify-between items-center hover:shadow-md hover:-translate-y-0.5 transition-all group"
                       >
-                        <div className="space-y-1">
-                          <div className="text-xs text-[#111827] font-semibold flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5 text-[#5B5CEB]" /> {fee.feeStructure?.feeType?.name}</div>
-                          <div className="text-[10px] text-slate-450 text-slate-400 font-medium">Due {new Date(fee.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</div>
+                        <div className="space-y-1.5">
+                          <div className="text-sm text-slate-800 font-bold flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
+                              <BookOpen className="w-3.5 h-3.5 text-indigo-600" /> 
+                            </div>
+                            {fee.feeStructure?.feeType?.name}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider ml-9">Due {new Date(fee.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</div>
                         </div>
                         <div className="flex items-center gap-6">
-                          <span className="text-sm font-bold text-[#111827] font-mono">{formatCurrency(remaining)}</span>
+                          <span className="text-base font-black text-slate-800 font-mono">{formatCurrency(remaining)}</span>
                           {remaining > 0 ? (
                             <button 
                               onClick={() => handleStartPayment(fee)}
-                              className="text-xs font-bold text-[#5B5CEB] hover:text-[#4a4bd1] transition-colors flex items-center gap-1"
+                              className="text-xs font-black text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-1"
                             >
-                              Pay <ArrowRight className="w-3 h-3 ml-1" />
+                              PAY <ArrowRight className="w-3 h-3 ml-1" />
                             </button>
                           ) : (
-                            <span className="text-xs text-[#10B981] font-bold">Paid</span>
+                            <span className="text-[10px] text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg font-black uppercase tracking-widest">Paid</span>
                           )}
                         </div>
                       </div>
@@ -420,19 +436,24 @@ export default function StudentDashboard() {
                   {transactions.slice(0, 3).map((tx) => (
                     <div 
                       key={tx.id}
-                      className="bg-white rounded-xl p-4 border border-[#E5E7EB] shadow-sm flex justify-between items-center"
+                      className="bg-white/60 backdrop-blur-lg rounded-2xl p-5 border border-white shadow-sm flex justify-between items-center hover:shadow-md hover:-translate-y-0.5 transition-all group"
                     >
-                      <div className="space-y-0.5">
-                        <div className="text-xs font-semibold text-[#111827] flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> {tx.studentFee?.feeStructure?.feeType?.name || 'School Fee'} Paid</div>
-                        <div className="text-[9px] text-slate-400 font-medium">Paid on {new Date(tx.createdAt).toLocaleDateString()}</div>
+                      <div className="space-y-1.5">
+                        <div className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          </div>
+                          {tx.studentFee?.feeStructure?.feeType?.name || 'School Fee'} Paid
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider ml-9">Paid on {new Date(tx.createdAt).toLocaleDateString()}</div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <span className="text-xs font-bold text-[#111827] font-mono">{formatCurrency(tx.amount)}</span>
+                      <div className="flex items-center gap-6">
+                        <span className="text-base font-black text-slate-800 font-mono">{formatCurrency(tx.amount)}</span>
                         <button 
                           onClick={() => handleTriggerPrint(tx)}
-                          className="text-[10px] font-bold text-[#5B5CEB] hover:text-[#4a4bd1] transition-colors"
+                          className="text-[10px] font-black text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg transition-colors flex items-center gap-1 uppercase tracking-wider"
                         >
-                          Download Receipt
+                          Receipt <Download className="w-3 h-3" />
                         </button>
                       </div>
                     </div>
@@ -447,7 +468,7 @@ export default function StudentDashboard() {
             <div className="bg-white rounded-xl p-5 border border-[#E5E7EB] shadow-sm">
               <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-4">Need Help?</h4>
               <div className="grid grid-cols-3 gap-3">
-                <button className="py-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 transition-all border border-[#E5E7EB] flex items-center justify-center gap-1.5">
+                <button onClick={() => setActiveTab('messages')} className="py-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 transition-all border border-[#E5E7EB] flex items-center justify-center gap-1.5">
                   <MessageSquare className="w-4 h-4 text-slate-500" /> Chat
                 </button>
                 <button className="py-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 transition-all border border-[#E5E7EB] flex items-center justify-center gap-1.5">
@@ -634,6 +655,11 @@ export default function StudentDashboard() {
 
           </div>
         )}
+
+        {/* ---------------------------------------------------- */}
+        {/* TAB 5: MESSAGES */}
+        {/* ---------------------------------------------------- */}
+        {activeTab === 'messages' && <MessagesView />}
 
       </main>
 
@@ -1057,6 +1083,7 @@ export default function StudentDashboard() {
           { k: 'home', icon: <Home className="w-5 h-5" />, label: 'Home' },
           { k: 'invoices', icon: <FileText className="w-5 h-5" />, label: 'Dues' },
           { k: 'receipts', icon: <Download className="w-5 h-5" />, label: 'Receipts' },
+          { k: 'messages', icon: <MessageSquare className="w-5 h-5" />, label: 'Chat' },
           { k: 'profile', icon: <User className="w-5 h-5" />, label: 'Profile' }
         ].map(tab => (
           <button 
