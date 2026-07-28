@@ -719,17 +719,17 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Stats & Trust Section */}
+      {/* Platform Capabilities */}
       <section className="relative z-10 py-20 border-t border-slate-900">
         <div className="max-w-5xl mx-auto px-6">
 
-          {/* Stats Row */}
+          {/* What CampusPay Actually Does */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-14">
             {[
-              { value: '₹2.4Cr+', label: 'Fees Processed', sub: 'across institutions' },
-              { value: '3,800+', label: 'Students Managed', sub: 'active on platform' },
-              { value: '99.9%', label: 'Uptime SLA', sub: 'enterprise grade' },
-              { value: '<2s', label: 'Reconciliation', sub: 'real-time ledger sync' },
+              { value: '4', label: 'Role Dashboards', sub: 'Super Admin · School Admin · Accountant · Student' },
+              { value: '∞', label: 'Multi-School', sub: 'one platform, unlimited schools' },
+              { value: 'Live', label: 'Ledger Sync', sub: 'real-time double-entry reconciliation' },
+              { value: 'Auto', label: 'Fee Engine', sub: 'penalties, reminders & receipts' },
             ].map((stat, i) => (
               <div key={i} className="p-5 rounded-2xl border border-slate-800 bg-[#0F1224]/60 text-center hover:border-[#5B5CEB]/30 transition-colors">
                 <div className="text-2xl md:text-3xl font-black text-white mb-1">{stat.value}</div>
@@ -739,15 +739,15 @@ export default function LandingPage() {
             ))}
           </div>
 
-          {/* Trust Badges */}
+          {/* Built-in Capabilities */}
           <div className="flex flex-wrap items-center justify-center gap-3">
             {[
-              { icon: '🔒', text: '256-bit SSL Encryption' },
-              { icon: '✅', text: 'PCI-DSS Ready' },
-              { icon: '🏦', text: 'Multi-Bank Support' },
-              { icon: '📊', text: 'Real-time Audit Logs' },
-              { icon: '☁️', text: 'Cloud Hosted' },
-              { icon: '📱', text: 'UPI & Card Payments' },
+              { icon: '📧', text: 'Email & In-App Reminders' },
+              { icon: '📄', text: 'Auto PDF Receipts' },
+              { icon: '📊', text: 'Excel Bulk Import' },
+              { icon: '💬', text: 'Student Messaging' },
+              { icon: '🔐', text: 'Role-Based Access' },
+              { icon: '📱', text: 'UPI & Multi-Method Payments' },
             ].map((badge, i) => (
               <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full border border-slate-800 bg-slate-900/50 text-slate-400 text-[11px] font-bold">
                 <span>{badge.icon}</span>
