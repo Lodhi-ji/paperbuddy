@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: paperbuddy-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npx prisma migrate deploy
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # You will provide this securely in the Render dashboard
+      - key: JWT_SECRET
+        generateValue: true # Render will automatically generate a secure secret for you
+      - key: PORT
+        value: 5001
+      - key: FRONTEND_URL
+        sync: false # You will update this with your Vercel URL later
