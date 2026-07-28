@@ -12,7 +12,7 @@ const skipInTests = () => process.env.NODE_ENV === 'test';
 // generously since these endpoints are rarely called at high legitimate volume.
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 10,
+  limit: 50,
   standardHeaders: true,
   legacyHeaders: false,
   skip: skipInTests,
@@ -23,7 +23,7 @@ export const authLimiter = rateLimit({
 // could otherwise use this endpoint to spam a victim's inbox / enumerate emails.
 export const forgotPasswordLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  limit: 5,
+  limit: 20,
   standardHeaders: true,
   legacyHeaders: false,
   skip: skipInTests,
@@ -34,7 +34,7 @@ export const forgotPasswordLimiter = rateLimit({
 // against scripted abuse; generous enough to not interfere with normal dashboard use.
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 300,
+  limit: 1000,
   standardHeaders: true,
   legacyHeaders: false,
   skip: skipInTests,
