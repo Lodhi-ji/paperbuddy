@@ -1,13 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
 import { api } from '../api';
 import { useAuthStore } from '../store/authStore';
-import Header from '../components/Header';
 import PrintReceipt from '../components/PrintReceipt';
 import MessagesView from '../components/MessagesView';
 import {
-  Home,
   FileText,
   Download,
   User,
@@ -21,54 +19,293 @@ import {
   Clock,
   CreditCard,
   MessageSquare,
-  HelpCircle,
-  BookOpen,
   ArrowRight,
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   Mail,
   School,
   Smartphone,
   Landmark,
   Wallet,
-  Banknote
+  Banknote,
+  History,
+  Receipt,
+  LogOut,
+  Settings,
+  Bell,
+  Home,
 } from 'lucide-react';
 
+// ─── Hero Carousel slides definition (ready for dynamic data from admin) ──────
+const DEFAULT_SLIDES = [
+  {
+    id: 1,
+    image: '/slide-campus.jpg',
+    badge: 'Welcome',
+    title: (name) => `Welcome back, ${name || 'Student'}.`,
+    subtitle: 'Everything you need for your school payments, in one place.',
+    cta: null,
+    overlayFrom: 'from-slate-900/70',
+    overlayTo: 'to-transparent',
+  },
+  {
+    id: 2,
+    image: '/slide-payment.jpg',
+    badge: 'Payments',
+    title: () => 'Payments made simple.',
+    subtitle: 'View dues, pay securely and download receipts instantly.',
+    cta: { label: 'View Dues', tab: 'invoices' },
+    overlayFrom: 'from-indigo-950/80',
+    overlayTo: 'to-indigo-900/20',
+  },
+  {
+    id: 3,
+    image: '/slide-notice.jpg',
+    badge: 'Stay Updated',
+    title: () => 'Stay up to date.',
+    subtitle: 'Important notices and payment reminders will appear here.',
+    cta: null,
+    overlayFrom: 'from-amber-950/60',
+    overlayTo: 'to-transparent',
+  },
+];
+
+// ─── Carousel component ────────────────────────────────────────────────────────
+function HeroCarousel({ slides, onCtaClick, userName }) {
+  const [current, setCurrent] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const [touchStart, setTouchStart] = useState(null);
+  const timerRef = useRef(null);
+
+  const startTimer = useCallback(() => {
+    clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setCurrent(prev => (prev + 1) % slides.length);
+    }, 5500);
+  }, [slides.length]);
+
+  useEffect(() => {
+    if (!isHovered) startTimer();
+    return () => clearInterval(timerRef.current);
+  }, [isHovered, startTimer]);
+
+  const goTo = (idx) => {
+    setCurrent(idx);
+    startTimer();
+  };
+  const prev = () => goTo((current - 1 + slides.length) % slides.length);
+  const next = () => goTo((current + 1) % slides.length);
+
+  const handleTouchStart = (e) => setTouchStart(e.touches[0].clientX);
+  const handleTouchEnd = (e) => {
+    if (touchStart === null) return;
+    const diff = touchStart - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) diff > 0 ? next() : prev();
+    setTouchStart(null);
+  };
+
+  const slide = slides[current];
+
+  return (
+    <div
+      className="relative w-full overflow-hidden rounded-2xl md:rounded-3xl select-none"
+      style={{ aspectRatio: '16/6' }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Slides */}
+      {slides.map((s, i) => (
+        <div
+          key={s.id}
+          className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${i === current ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+        >
+          <img
+            src={s.image}
+            alt={`Slide ${i + 1}`}
+            className="w-full h-full object-cover"
+            draggable={false}
+          />
+          {/* Gradient overlay */}
+          <div className={`absolute inset-0 bg-gradient-to-r ${s.overlayFrom} ${s.overlayTo}`} />
+        </div>
+      ))}
+
+      {/* Text Content */}
+      <div className="absolute inset-0 z-20 flex flex-col justify-end p-6 md:p-10">
+        <div
+          key={current}
+          style={{ animation: 'slideUp 0.5s ease forwards' }}
+        >
+          <span className="inline-block text-[10px] font-black uppercase tracking-[0.2em] text-white/70 mb-2 bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20">
+            {slide.badge}
+          </span>
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-white leading-tight tracking-tight drop-shadow-md max-w-xl">
+            {slide.title(userName)}
+          </h1>
+          <p className="text-sm md:text-base text-white/75 mt-2 font-medium max-w-lg leading-relaxed">
+            {slide.subtitle}
+          </p>
+          {slide.cta && (
+            <button
+              onClick={() => onCtaClick(slide.cta.tab)}
+              className="mt-4 inline-flex items-center gap-2 bg-white text-slate-900 text-sm font-bold px-5 py-2.5 rounded-xl hover:bg-slate-50 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-95"
+            >
+              {slide.cta.label} <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Nav arrows — desktop only */}
+      <button
+        onClick={prev}
+        className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 z-30 w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 items-center justify-center text-white hover:bg-black/50 transition-all"
+        aria-label="Previous slide"
+      >
+        <ChevronLeft className="w-4 h-4" />
+      </button>
+      <button
+        onClick={next}
+        className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-30 w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 items-center justify-center text-white hover:bg-black/50 transition-all"
+        aria-label="Next slide"
+      >
+        <ChevronRight className="w-4 h-4" />
+      </button>
+
+      {/* Dots */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5">
+        {slides.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => goTo(i)}
+            className={`rounded-full transition-all duration-300 ${
+              i === current ? 'w-6 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/40 hover:bg-white/60'
+            }`}
+            aria-label={`Go to slide ${i + 1}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Action Card ───────────────────────────────────────────────────────────────
+function ActionCard({ icon: Icon, iconBg, title, subtitle, badge, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="group relative bg-white border border-slate-100 rounded-2xl p-5 text-left flex flex-col gap-3 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 active:scale-[0.98] min-h-[120px]"
+    >
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg} flex-shrink-0`}>
+        <Icon className="w-5 h-5" />
+      </div>
+      <div className="flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-[15px] font-bold text-slate-900 leading-snug">{title}</span>
+          {badge && (
+            <span className="text-[10px] font-black bg-indigo-600 text-white px-1.5 py-0.5 rounded-full leading-none">
+              {badge}
+            </span>
+          )}
+        </div>
+        <p className="text-[13px] text-slate-400 font-medium mt-0.5 leading-snug">{subtitle}</p>
+      </div>
+      <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all absolute bottom-4 right-4" />
+    </button>
+  );
+}
+
+// ─── Avatar Dropdown ───────────────────────────────────────────────────────────
+function AvatarMenu({ user, onTabChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const { logout } = useAuthStore();
+
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const initials = user?.name
+    ? user.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+    : 'ST';
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-black text-sm flex items-center justify-center border-2 border-white shadow-md hover:scale-105 active:scale-95 transition-transform ring-2 ring-indigo-100"
+        aria-label="Profile menu"
+      >
+        {initials}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-14 w-44 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="px-4 py-3 border-b border-slate-50">
+            <p className="text-xs font-bold text-slate-800 truncate">{user?.name}</p>
+            <p className="text-[10px] text-slate-400 truncate">{user?.email}</p>
+          </div>
+          {[
+            { label: 'Profile', icon: User, tab: 'profile' },
+            { label: 'Messages', icon: MessageSquare, tab: 'messages' },
+          ].map(item => (
+            <button
+              key={item.tab}
+              onClick={() => { onTabChange(item.tab); setOpen(false); }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              <item.icon className="w-4 h-4 text-slate-400" />
+              {item.label}
+            </button>
+          ))}
+          <div className="border-t border-slate-50">
+            <button
+              onClick={() => { logout(); setOpen(false); }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Component ────────────────────────────────────────────────────────────
 export default function StudentDashboard() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
 
-  // Navigation tab state: 'home' | 'invoices' | 'receipts' | 'profile'
   const [activeTab, setActiveTab] = useState('home');
 
-  // Checkout flows
+  // Checkout flows (ALL PRESERVED — untouched)
   const [selectedFee, setSelectedFee] = useState(null);
-  const [checkoutStep, setCheckoutStep] = useState('summary'); // 'summary' | 'details' | 'processing' | 'success'
-  const [payMethod, setPayMethod] = useState('UPI'); // UPI, CARD, NETBANKING, WALLET
+  const [checkoutStep, setCheckoutStep] = useState('summary');
+  const [payMethod, setPayMethod] = useState('UPI');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStage, setProcessingStage] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [createdTxn, setCreatedTxn] = useState(null);
-  
-  // Custom states
   const [isCardFlipped, setIsCardFlipped] = useState(false);
   const [enlargeQr, setEnlargeQr] = useState(false);
   const [progressVal, setProgressVal] = useState(0);
-
-  // UPI countdown timer
-  const [countdown, setCountdown] = useState(120); // 2:00 minutes
-
-  // Card details
+  const [countdown, setCountdown] = useState(120);
   const [cardNumber, setCardNumber] = useState('');
   const [cardName, setCardName] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
-
-  // Print state
   const [printReceiptData, setPrintReceiptData] = useState(null);
 
-  // ----------------------------------------------------
-  // DATA FETCHING
-  // ----------------------------------------------------
+  // ── Data fetching ────────────────────────────────────────────────────────────
   const { data: fees, isLoading: feesLoading } = useQuery({
     queryKey: ['studentFees'],
     queryFn: () => api.get('/student/fees'),
@@ -95,7 +332,7 @@ export default function StudentDashboard() {
     },
   });
 
-  // Countdown timer for UPI QR Code
+  // ── UPI countdown ─────────────────────────────────────────────────────────────
   useEffect(() => {
     let timer;
     if (selectedFee && payMethod === 'UPI' && checkoutStep === 'details' && !paymentSuccess) {
@@ -108,7 +345,7 @@ export default function StudentDashboard() {
     return () => clearInterval(timer);
   }, [selectedFee, payMethod, checkoutStep, paymentSuccess]);
 
-  // Calculations
+  // ── Calculations ──────────────────────────────────────────────────────────────
   const calculations = useMemo(() => {
     let outstanding = 0;
     let waiversTotal = 0;
@@ -120,54 +357,23 @@ export default function StudentDashboard() {
       const waiver = Number(fee.waiverAmount);
       const penalty = Number(fee.penaltyAmount);
       const remaining = Math.max(0, (due + penalty) - (paid + waiver));
-
       outstanding += remaining;
       waiversTotal += waiver;
-
-      if (remaining > 0) {
-        activeInvoicesCount++;
-      }
+      if (remaining > 0) activeInvoicesCount++;
     });
 
-    return {
-      outstanding,
-      waiversTotal,
-      activeInvoicesCount,
-    };
+    return { outstanding, waiversTotal, activeInvoicesCount };
   }, [fees]);
 
-  // Visual outstanding balance rolling counter
-  const [visualOutstanding, setVisualOutstanding] = useState(0);
-  useEffect(() => {
-    if (feesLoading) return;
-    const target = calculations.outstanding;
-    if (visualOutstanding === 0) {
-      setVisualOutstanding(target);
-      return;
-    }
+  // ── Helpers ───────────────────────────────────────────────────────────────────
+  const formatCurrency = (val) => new Intl.NumberFormat('en-IN', {
+    style: 'currency', currency: 'INR', maximumFractionDigits: 0
+  }).format(val || 0);
 
-    let start = visualOutstanding;
-    const duration = 1000; 
-    const startTime = performance.now();
-
-    const animate = (now) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const current = Math.round(start + (target - start) * progress);
-      setVisualOutstanding(current);
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      }
-    };
-    requestAnimationFrame(animate);
-  }, [calculations.outstanding, feesLoading]);
-
-  const formatCurrency = (val) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(val || 0);
+  const formatTimer = (sec) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
   const handleStartPayment = (fee) => {
@@ -176,356 +382,210 @@ export default function StudentDashboard() {
     setPaymentSuccess(false);
     setCreatedTxn(null);
     setProgressVal(0);
-    setCardNumber('');
-    setCardName('');
-    setCardExpiry('');
-    setCardCvv('');
+    setCardNumber(''); setCardName(''); setCardExpiry(''); setCardCvv('');
     setIsCardFlipped(false);
   };
 
   const handleTriggerPrint = (transaction) => {
     setPrintReceiptData(transaction);
-    setTimeout(() => {
-      window.print();
-      setPrintReceiptData(null);
-    }, 300);
+    setTimeout(() => { window.print(); setPrintReceiptData(null); }, 300);
   };
 
   const handleConfirmCheckout = (e) => {
     e.preventDefault();
     if (!selectedFee) return;
-
     setCheckoutStep('processing');
     setProgressVal(10);
     setProcessingStage('Verifying Payment Credentials...');
-
     setTimeout(() => {
       setProgressVal(40);
       setProcessingStage('Contacting Secure Banking Node...');
-      
       setTimeout(() => {
         setProgressVal(75);
         setProcessingStage('Updating Distributed Academic Ledger...');
-        
-        setTimeout(() => {
-          payMutation.mutate({ id: selectedFee.id, method: payMethod });
-        }, 800);
+        setTimeout(() => { payMutation.mutate({ id: selectedFee.id, method: payMethod }); }, 800);
       }, 800);
     }, 800);
   };
 
-  // Card spacing helper
   const handleCardNumberChange = (e) => {
     const value = e.target.value.replace(/\D/g, '');
     const formatted = value.match(/.{1,4}/g)?.join(' ') || value;
     setCardNumber(formatted.substring(0, 19));
   };
 
-  // Format timer
-  const formatTimer = (sec) => {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
+  const totalPayableAmount = selectedFee
+    ? (Number(selectedFee.amountDue) + Number(selectedFee.penaltyAmount) - Number(selectedFee.amountPaid) - Number(selectedFee.waiverAmount))
+    : 0;
 
-  const totalPayableAmount = selectedFee ? (Number(selectedFee.amountDue) + Number(selectedFee.penaltyAmount) - Number(selectedFee.amountPaid) - Number(selectedFee.waiverAmount)) : 0;
+  // Upcoming fees = unpaid or partial
+  const upcomingFees = useMemo(() =>
+    (fees || []).filter(f => {
+      const remaining = Math.max(0, (Number(f.amountDue) + Number(f.penaltyAmount)) - (Number(f.amountPaid) + Number(f.waiverAmount)));
+      return remaining > 0;
+    }).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)),
+    [fees]
+  );
+
+  const recentTransactions = useMemo(() =>
+    (transactions || []).slice(0, 3),
+    [transactions]
+  );
+
+  const firstName = user?.name?.split(' ')[0] || 'Student';
+
+  // ── Tab change handler ────────────────────────────────────────────────────────
+  const handleTabChange = (tab) => setActiveTab(tab);
 
   return (
-    <div className="max-w-[800px] mx-auto px-4 pb-24 pt-4 min-h-screen bg-gradient-to-br from-indigo-50/50 via-white to-purple-50/30 text-[#111827] font-sans flex flex-col justify-between relative">
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none"></div>
-      
-      {/* Embed Custom Styles for flips, confetti, and money wave animations */}
+    <div className="min-h-screen bg-[#F8F8F9] text-slate-900 font-sans">
+
+      {/* ── Inline styles ──────────────────────────────────────────────────────── */}
       <style>{`
-        .perspective-container {
-          perspective: 1000px;
-        }
-        .card-inner {
-          transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-          transform-style: preserve-3d;
-        }
-        .card-inner.flipped {
-          transform: rotateY(180deg);
-        }
-        .card-front, .card-back {
-          backface-visibility: hidden;
-          position: absolute;
-          width: 100%;
-          height: 100%;
-          top: 0;
-          left: 0;
-        }
-        .card-back {
-          transform: rotateY(180deg);
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
         @keyframes pulse-wave {
           0% { transform: scale(0.9); opacity: 0.1; }
           50% { transform: scale(1.1); opacity: 0.3; }
           100% { transform: scale(1.3); opacity: 0; }
         }
-        .wave-effect {
-          animation: pulse-wave 2s infinite ease-out;
-        }
+        .wave-effect { animation: pulse-wave 2s infinite ease-out; }
+        .perspective-container { perspective: 1000px; }
+        .card-inner { transition: transform 0.6s cubic-bezier(0.4,0,0.2,1); transform-style: preserve-3d; }
+        .card-inner.flipped { transform: rotateY(180deg); }
+        .card-front, .card-back { backface-visibility: hidden; position: absolute; width: 100%; height: 100%; top: 0; left: 0; }
+        .card-back { transform: rotateY(180deg); }
       `}</style>
 
-      {/* Top Header */}
-      <div className="no-print">
-        <Header />
-      </div>
-
-      {/* DESKTOP TOP NAV BAR */}
-      <nav className="no-print hidden md:flex items-center justify-center gap-1.5 bg-white/70 backdrop-blur-lg p-1.5 rounded-2xl w-fit mx-auto mb-8 border border-white shadow-sm">
-        {[
-          { k: 'home', label: 'Home' },
-          { k: 'invoices', label: 'Invoices' },
-          { k: 'receipts', label: 'Receipts' },
-          { k: 'profile', label: 'Profile' }
-        ].map(tab => (
-          <button 
-            key={tab.k}
-            onClick={() => setActiveTab(tab.k)}
-            className={`px-8 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
-              activeTab === tab.k ? 'bg-indigo-600 text-white shadow-md scale-[1.02]' : 'text-slate-500 hover:text-indigo-600 hover:bg-white/50'
-            }`}
-          >
-            {tab.label}
+      {/* ── HEADER ─────────────────────────────────────────────────────────────── */}
+      <header className="no-print sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-slate-100/80">
+        <div className="max-w-[1360px] mx-auto px-5 md:px-8 h-16 flex items-center justify-between">
+          {/* Logo */}
+          <button onClick={() => setActiveTab('home')} className="flex-shrink-0">
+            <img
+              src="/campuspay-logo.png"
+              alt="CampusPay"
+              className="h-8 w-auto object-contain"
+            />
           </button>
-        ))}
-      </nav>
 
-      {/* Main Content Area */}
-      <main className="flex-1 no-print">
+          {/* Right: notification bell (mobile only) + avatar */}
+          <div className="flex items-center gap-3">
+            {upcomingFees.length > 0 && (
+              <button
+                onClick={() => setActiveTab('invoices')}
+                className="relative w-9 h-9 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors"
+              >
+                <Bell className="w-4.5 h-4.5" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border border-white" />
+              </button>
+            )}
+            <AvatarMenu user={user} onTabChange={handleTabChange} />
+          </div>
+        </div>
+      </header>
 
-        {/* ---------------------------------------------------- */}
-        {/* TAB 1: HOME (Clean layout matching Stripe + Notion) */}
-        {/* ---------------------------------------------------- */}
+      {/* ── MAIN ───────────────────────────────────────────────────────────────── */}
+      <main className="max-w-[1360px] mx-auto px-4 md:px-8 pb-24 md:pb-16 pt-6 space-y-0 no-print">
+
+        {/* ═══════════════════════════════════════════════════════
+            HOME TAB
+        ════════════════════════════════════════════════════════ */}
         {activeTab === 'home' && (
-          <div className="space-y-6">
-            
-            {/* Greeting Header */}
-            <div>
-              <h2 className="text-lg font-bold text-[#111827] tracking-tight">
-                <span className="flex items-center gap-2">Good Morning, {user?.name || 'Student'}</span>
-              </h2>
+          <div>
+            {/* HERO CAROUSEL */}
+            <HeroCarousel
+              slides={DEFAULT_SLIDES}
+              onCtaClick={handleTabChange}
+              userName={firstName}
+            />
+
+            {/* FOUR ACTION CARDS */}
+            <div className="mt-6 md:mt-8 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+              <ActionCard
+                icon={Receipt}
+                iconBg="bg-indigo-50 text-indigo-600"
+                title="Active Fees"
+                subtitle="View & pay dues"
+                badge={calculations.activeInvoicesCount > 0 ? `${calculations.activeInvoicesCount} due` : null}
+                onClick={() => setActiveTab('invoices')}
+              />
+              <ActionCard
+                icon={History}
+                iconBg="bg-emerald-50 text-emerald-600"
+                title="Transactions"
+                subtitle="Payments & receipts"
+                onClick={() => setActiveTab('receipts')}
+              />
+              <ActionCard
+                icon={MessageSquare}
+                iconBg="bg-violet-50 text-violet-600"
+                title="Conversations"
+                subtitle="School messages"
+                onClick={() => setActiveTab('messages')}
+              />
+              <ActionCard
+                icon={User}
+                iconBg="bg-rose-50 text-rose-500"
+                title="My Profile"
+                subtitle="Personal & academic info"
+                onClick={() => setActiveTab('profile')}
+              />
             </div>
 
-            {/* HERO OUTSTANDING BANNER (Stripe Style flat card) */}
-            <div className="relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-indigo-900 via-indigo-800 to-violet-900 text-white shadow-2xl shadow-indigo-900/20 flex flex-col justify-between min-h-[180px] group hover:-translate-y-1 transition-transform duration-300">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:scale-110 transition-transform duration-700"></div>
-              <div className="space-y-1 relative z-10">
-                <span className="text-[10px] text-indigo-200 font-bold uppercase tracking-widest">Outstanding Balance</span>
-                <div className="text-4xl font-black font-mono tracking-tight text-white drop-shadow-sm">
-                  {formatCurrency(visualOutstanding)}
-                </div>
-              </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-8 pt-6 border-t border-indigo-500/30 relative z-10">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center">
-                    <Clock className="w-3.5 h-3.5 text-amber-400" />
-                  </div>
-                  <span className="text-xs font-bold text-indigo-100">Due in 5 Days</span>
-                </div>
-                {calculations.outstanding > 0 ? (
-                  <button 
-                    onClick={() => {
-                      const firstPending = fees?.find(f => Number(f.amountDue) > Number(f.amountPaid));
-                      if (firstPending) handleStartPayment(firstPending);
-                    }}
-                    className="bg-white hover:bg-indigo-50 text-indigo-900 px-8 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_25px_rgba(255,255,255,0.5)] active:scale-[0.98] w-full sm:w-auto"
-                  >
-                    Pay Now
-                  </button>
-                ) : (
-                  <span className="text-xs text-emerald-400 font-black uppercase tracking-widest bg-emerald-400/10 px-4 py-2 rounded-lg backdrop-blur-sm">
-                    <span className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> All Dues Paid</span>
-                  </span>
-                )}
-              </div>
-            </div>
 
-            {/* Wallet Metric Cards (Three columns - Clean styling) */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white/70 backdrop-blur-xl p-5 rounded-2xl border border-white shadow-sm flex flex-col justify-between min-h-[110px] hover:-translate-y-1 hover:shadow-md transition-all group">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform"><FileText className="w-3 h-3 text-blue-500" /></div> Receipts
-                </span>
-                <span className="text-lg font-black text-slate-800 mt-2">
-                  {transactions?.length || 0}
-                </span>
-                <span className="text-[9px] text-slate-400 mt-1 font-semibold uppercase tracking-wide">Available Downloads</span>
-              </div>
-
-              <div className="bg-white/70 backdrop-blur-xl p-5 rounded-2xl border border-white shadow-sm flex flex-col justify-between min-h-[110px] hover:-translate-y-1 hover:shadow-md transition-all group">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center group-hover:scale-110 transition-transform"><Banknote className="w-3 h-3 text-emerald-500" /></div> Waivers
-                </span>
-                <span className="text-lg font-black text-slate-800 mt-2">
-                  {formatCurrency(calculations.waiversTotal)}
-                </span>
-                <span className="text-[9px] text-emerald-500 font-bold mt-1 uppercase tracking-wide">Applied Total</span>
-              </div>
-
-              <div className="bg-white/70 backdrop-blur-xl p-5 rounded-2xl border border-white shadow-sm flex flex-col justify-between min-h-[110px] hover:-translate-y-1 hover:shadow-md transition-all group">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-amber-50 flex items-center justify-center group-hover:scale-110 transition-transform"><Calendar className="w-3 h-3 text-amber-500" /></div> Upcoming
-                </span>
-                <span className="text-lg font-black text-slate-800 mt-2">
-                  {calculations.activeInvoicesCount} Fees
-                </span>
-                <span className="text-[9px] text-slate-400 mt-1 font-semibold uppercase tracking-wide">Pending Due</span>
-              </div>
-            </div>
-
-            {/* UPCOMING FEES LIST (Clean, flat cards) */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Upcoming Fees</h3>
-              {feesLoading ? (
-                <div className="py-8 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
-              ) : fees && fees.length > 0 ? (
-                <div className="space-y-2.5">
-                  {fees.map((fee) => {
-                    const due = Number(fee.amountDue);
-                    const paid = Number(fee.amountPaid);
-                    const waiver = Number(fee.waiverAmount);
-                    const penalty = Number(fee.penaltyAmount);
-                    const remaining = Math.max(0, (due + penalty) - (paid + waiver));
-
-                    return (
-                      <div 
-                        key={fee.id}
-                        className="bg-white/60 backdrop-blur-lg rounded-2xl p-5 border border-white shadow-sm flex justify-between items-center hover:shadow-md hover:-translate-y-0.5 transition-all group"
-                      >
-                        <div className="space-y-1.5">
-                          <div className="text-sm text-slate-800 font-bold flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
-                              <BookOpen className="w-3.5 h-3.5 text-indigo-600" /> 
-                            </div>
-                            {fee.feeStructure?.feeType?.name}
-                          </div>
-                          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider ml-9">Due {new Date(fee.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</div>
-                        </div>
-                        <div className="flex items-center gap-6">
-                          <span className="text-base font-black text-slate-800 font-mono">{formatCurrency(remaining)}</span>
-                          {remaining > 0 ? (
-                            <button 
-                              onClick={() => handleStartPayment(fee)}
-                              className="text-xs font-black text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-1"
-                            >
-                              PAY <ArrowRight className="w-3 h-3 ml-1" />
-                            </button>
-                          ) : (
-                            <span className="text-[10px] text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg font-black uppercase tracking-widest">Paid</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="py-6 text-center text-slate-400 text-xs">No pending invoices.</div>
-              )}
-            </div>
-
-            {/* RECENT PAYMENTS */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Recent Payments</h3>
-              {txnsLoading ? (
-                <div className="py-6 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
-              ) : transactions && transactions.length > 0 ? (
-                <div className="space-y-2.5">
-                  {transactions.slice(0, 3).map((tx) => (
-                    <div 
-                      key={tx.id}
-                      className="bg-white/60 backdrop-blur-lg rounded-2xl p-5 border border-white shadow-sm flex justify-between items-center hover:shadow-md hover:-translate-y-0.5 transition-all group"
-                    >
-                      <div className="space-y-1.5">
-                        <div className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                          </div>
-                          {tx.studentFee?.feeStructure?.feeType?.name || 'School Fee'} Paid
-                        </div>
-                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider ml-9">Paid on {new Date(tx.createdAt).toLocaleDateString()}</div>
-                      </div>
-                      <div className="flex items-center gap-6">
-                        <span className="text-base font-black text-slate-800 font-mono">{formatCurrency(tx.amount)}</span>
-                        <button 
-                          onClick={() => handleTriggerPrint(tx)}
-                          className="text-[10px] font-black text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg transition-colors flex items-center gap-1 uppercase tracking-wider"
-                        >
-                          Receipt <Download className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-6 text-center text-slate-400 text-xs bg-white rounded-xl border border-[#E5E7EB] shadow-sm animate-pulse">No transaction records found.</div>
-              )}
-            </div>
-
-            {/* NEED HELP */}
-            <div className="bg-white rounded-xl p-5 border border-[#E5E7EB] shadow-sm">
-              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-4">Need Help?</h4>
-              <div className="grid grid-cols-3 gap-3">
-                <button onClick={() => setActiveTab('messages')} className="py-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 transition-all border border-[#E5E7EB] flex items-center justify-center gap-1.5">
-                  <MessageSquare className="w-4 h-4 text-slate-500" /> Chat
-                </button>
-                <button className="py-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 transition-all border border-[#E5E7EB] flex items-center justify-center gap-1.5">
-                  <HelpCircle className="w-4 h-4 text-slate-500" /> Support
-                </button>
-                <button className="py-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 transition-all border border-[#E5E7EB] flex items-center justify-center gap-1.5">
-                  <BookOpen className="w-4 h-4 text-slate-500" /> FAQ
-                </button>
-              </div>
-            </div>
-
+            <div className="h-8" />
           </div>
         )}
 
-        {/* ---------------------------------------------------- */}
-        {/* TAB 2: INVOICES */}
-        {/* ---------------------------------------------------- */}
+        {/* ═══════════════════════════════════════════════════════
+            INVOICES TAB
+        ════════════════════════════════════════════════════════ */}
         {activeTab === 'invoices' && (
-          <div className="space-y-6">
+          <div className="pt-2 space-y-6">
             <div>
-              <h1 className="text-xl font-bold text-[#111827] tracking-tight">Active Invoices</h1>
-              <p className="text-xs text-slate-550 text-slate-500 font-semibold mt-0.5">Manage and pay academic invoices</p>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Active Fees</h1>
+              <p className="text-sm text-slate-400 font-medium mt-1">Manage and pay your academic invoices</p>
             </div>
 
             {feesLoading ? (
-              <div className="py-16 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>
+              <div className="py-16 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-slate-300" /></div>
             ) : fees && fees.length > 0 ? (
-              <div className="space-y-2.5">
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden divide-y divide-slate-50">
                 {fees.map((fee) => {
                   const due = Number(fee.amountDue);
                   const paid = Number(fee.amountPaid);
                   const waiver = Number(fee.waiverAmount);
                   const penalty = Number(fee.penaltyAmount);
                   const remaining = Math.max(0, (due + penalty) - (paid + waiver));
-
+                  const isPaid = remaining === 0;
                   return (
-                    <div 
-                      key={fee.id}
-                      className="bg-white rounded-xl p-4 border border-[#E5E7EB] shadow-sm flex justify-between items-center"
-                    >
+                    <div key={fee.id} className="flex items-center justify-between px-5 py-5 hover:bg-slate-50/40 transition-colors">
                       <div className="space-y-1">
-                        <h4 className="font-bold text-sm text-[#111827]">{fee.feeStructure?.feeType?.name}</h4>
-                        <div className="text-[10px] text-slate-450 text-slate-405 text-slate-500 font-semibold">
-                          Due Date: {new Date(fee.dueDate).toLocaleDateString()} | Base: {formatCurrency(due)}
+                        <h4 className="font-bold text-sm text-slate-900">{fee.feeStructure?.feeType?.name}</h4>
+                        <div className="text-xs text-slate-400 font-medium">
+                          Due {new Date(fee.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          {Number(fee.penaltyAmount) > 0 && <span className="text-rose-500 ml-2">+{formatCurrency(fee.penaltyAmount)} penalty</span>}
                         </div>
                       </div>
-                      <div className="flex items-center gap-6">
-                        <span className="text-sm font-bold text-[#111827] font-mono">{formatCurrency(remaining)}</span>
-                        {remaining > 0 ? (
-                          <button 
+                      <div className="flex items-center gap-4 flex-shrink-0 ml-4">
+                        <span className="text-sm font-bold text-slate-900 font-mono">{formatCurrency(remaining)}</span>
+                        {!isPaid ? (
+                          <button
                             onClick={() => handleStartPayment(fee)}
-                            className="bg-[#5B5CEB] hover:bg-[#4a4bd1] text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm hover:shadow-md active:scale-95"
                           >
-                            Pay Dues
+                            Pay
                           </button>
                         ) : (
-                          <span className="text-xs text-[#10B981] font-bold">Paid</span>
+                          <span className="text-xs text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Paid
+                          </span>
                         )}
                       </div>
                     </div>
@@ -533,230 +593,230 @@ export default function StudentDashboard() {
                 })}
               </div>
             ) : (
-              <div className="py-16 text-center text-slate-400 text-xs">No active invoices found.</div>
+              <div className="py-20 text-center">
+                <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
+                <p className="font-bold text-slate-700">No active invoices</p>
+                <p className="text-xs text-slate-400 mt-1">You're all clear.</p>
+              </div>
             )}
           </div>
         )}
 
-        {/* ---------------------------------------------------- */}
-        {/* TAB 3: RECEIPTS */}
-        {/* ---------------------------------------------------- */}
+        {/* ═══════════════════════════════════════════════════════
+            RECEIPTS TAB
+        ════════════════════════════════════════════════════════ */}
         {activeTab === 'receipts' && (
-          <div className="space-y-6">
+          <div className="pt-2 space-y-6">
             <div>
-              <h1 className="text-xl font-bold text-[#111827] tracking-tight">Receipts History</h1>
-              <p className="text-xs text-slate-505 text-slate-500 font-semibold mt-0.5">Immutable transactional ledger updates (Apple Wallet Passes)</p>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Transaction History</h1>
+              <p className="text-sm text-slate-400 font-medium mt-1">All your payment receipts in one place</p>
             </div>
 
             {txnsLoading ? (
-              <div className="py-16 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>
+              <div className="py-16 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-slate-300" /></div>
             ) : transactions && transactions.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden divide-y divide-slate-50">
                 {transactions.map((tx) => (
-                  <div 
-                    key={tx.id}
-                    className="relative overflow-hidden bg-white border border-[#E5E7EB] rounded-xl p-5 shadow-sm text-[#111827]"
-                  >
-                    <div className="flex justify-between items-start pb-3 mb-3 border-b border-slate-100">
-                      <div>
-                        <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Fee Category</span>
-                        <h4 className="font-extrabold text-sm text-[#111827] mt-0.5">{tx.studentFee?.feeStructure?.feeType?.name || 'School Fee'}</h4>
+                  <div key={tx.id} className="flex items-center justify-between px-5 py-4 hover:bg-slate-50/40 transition-colors">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                        <CheckCircle2 className="w-4 h-4" />
                       </div>
-                      <div className="text-right">
-                        <span className="text-[#10B981] text-[9px] font-bold uppercase">PAID</span>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between items-center my-3">
-                      <div>
-                        <span className="text-[8px] text-slate-400 font-bold uppercase block">Paid Date</span>
-                        <span className="text-xs font-semibold text-slate-700">{new Date(tx.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[8px] text-slate-400 font-bold uppercase block">Amount</span>
-                        <span className="text-base font-black text-[#5B5CEB] font-mono">{formatCurrency(tx.amount)}</span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 truncate">{tx.studentFee?.feeStructure?.feeType?.name || 'School Fee'}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] font-mono text-slate-400 uppercase">{tx.receiptUrl?.substring(0, 12) || `CP-${tx.id.substring(0, 8).toUpperCase()}`}</span>
+                          <span className="text-[10px] text-slate-300">·</span>
+                          <span className="text-[10px] text-slate-400">{new Date(tx.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
+                        </div>
                       </div>
                     </div>
-
-                    <div className="flex gap-2 pt-3 border-t border-slate-100">
-                      <button 
+                    <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+                      <span className="text-sm font-bold text-slate-900 font-mono">{formatCurrency(tx.amount)}</span>
+                      <button
                         onClick={() => handleTriggerPrint(tx)}
-                        className="flex-1 bg-slate-50 hover:bg-slate-100 border border-[#E5E7EB] text-slate-700 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1"
+                        className="text-xs font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
                       >
-                        Download PDF
+                        <Download className="w-3 h-3" /> PDF
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="py-16 text-center text-slate-400 text-xs bg-white rounded-xl border border-[#E5E7EB] shadow-sm">No payment receipts available.</div>
+              <div className="py-20 text-center">
+                <History className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                <p className="font-bold text-slate-700">No transactions yet</p>
+                <p className="text-xs text-slate-400 mt-1">Your payment history will appear here.</p>
+              </div>
             )}
           </div>
         )}
 
-        {/* ---------------------------------------------------- */}
-        {/* TAB 4: PROFILE */}
-        {/* ---------------------------------------------------- */}
+        {/* ═══════════════════════════════════════════════════════
+            PROFILE TAB
+        ════════════════════════════════════════════════════════ */}
         {activeTab === 'profile' && (
-          <div className="space-y-6">
-            
-            {/* Real Data Profile Card */}
-            <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm relative overflow-hidden transition-all hover:shadow-md">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-primary to-brand-accent" />
-              
-              <div className="flex items-center gap-5 mt-2 pb-6 border-b border-slate-100">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-primary to-brand-accent text-white flex items-center justify-center font-black text-2xl shadow-inner shrink-0">
-                  {user?.name ? user.name.slice(0, 2).toUpperCase() : '👤'}
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-slate-800 leading-tight">{user?.name}</h2>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 flex items-center gap-1.5">
-                    <Mail className="w-3 h-3" />
-                    {user?.email}
-                  </p>
-                </div>
-              </div>
+          <div className="pt-2 space-y-6 max-w-xl">
+            <div>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">My Profile</h1>
+              <p className="text-sm text-slate-400 font-medium mt-1">Personal and academic information</p>
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mt-6 text-left">
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="flex items-center gap-2 mb-1">
-                    <School className="w-4 h-4 text-brand-primary" />
-                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Institution</span>
-                  </div>
-                  <span className="text-sm font-bold text-slate-800">{user?.schoolName}</span>
+            {/* Identity card */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="h-20 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500" />
+              <div className="px-6 pb-6 -mt-10">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-indigo-500 to-violet-600 text-white flex items-center justify-center font-black text-2xl shadow-lg border-4 border-white mb-4">
+                  {user?.name ? user.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() : 'ST'}
                 </div>
-                
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="flex items-center gap-2 mb-1">
-                    <ShieldCheck className="w-4 h-4 text-brand-primary" />
-                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Account Access</span>
-                  </div>
-                  <span className="text-sm font-bold text-brand-primary">{user?.role?.replace('_', ' ')}</span>
-                </div>
-
-                <div className="p-4 rounded-xl bg-rose-50 border border-rose-100">
-                  <div className="flex items-center gap-2 mb-1">
-                    <AlertCircle className="w-4 h-4 text-rose-500" />
-                    <span className="text-[10px] text-rose-600 font-bold uppercase tracking-wider">Outstanding Dues</span>
-                  </div>
-                  <span className="text-sm font-bold text-rose-600">{formatCurrency(calculations.outstanding)}</span>
-                </div>
-
-                <div className="p-4 rounded-xl bg-amber-50 border border-amber-100">
-                  <div className="flex items-center gap-2 mb-1">
-                    <FileText className="w-4 h-4 text-amber-500" />
-                    <span className="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Pending Invoices</span>
-                  </div>
-                  <span className="text-sm font-bold text-amber-600">{calculations.activeInvoicesCount} Active Bills</span>
-                </div>
+                <h2 className="text-xl font-bold text-slate-900">{user?.name}</h2>
+                <p className="text-sm text-slate-400 flex items-center gap-1.5 mt-1">
+                  <Mail className="w-3.5 h-3.5" /> {user?.email}
+                </p>
               </div>
             </div>
 
+            {/* Info grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: 'Institution', value: user?.schoolName, icon: School, color: 'indigo' },
+                { label: 'Account Role', value: user?.role?.replace('_', ' '), icon: ShieldCheck, color: 'violet' },
+                { label: 'Outstanding', value: formatCurrency(calculations.outstanding), icon: AlertCircle, color: 'rose' },
+                { label: 'Pending Invoices', value: `${calculations.activeInvoicesCount} Active`, icon: FileText, color: 'amber' },
+              ].map(item => (
+                <div key={item.label} className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <item.icon className={`w-3.5 h-3.5 text-${item.color}-500`} />
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{item.label}</span>
+                  </div>
+                  <span className="text-sm font-bold text-slate-800">{item.value || '—'}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* ---------------------------------------------------- */}
-        {/* TAB 5: MESSAGES */}
-        {/* ---------------------------------------------------- */}
-        {activeTab === 'messages' && <MessagesView />}
+        {/* ═══════════════════════════════════════════════════════
+            MESSAGES TAB
+        ════════════════════════════════════════════════════════ */}
+        {activeTab === 'messages' && (
+          <div className="pt-2">
+            <div className="mb-5">
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Conversations</h1>
+              <p className="text-sm text-slate-400 font-medium mt-1">Messages from your school</p>
+            </div>
+            <MessagesView />
+          </div>
+        )}
 
       </main>
 
-      {/* RAZORPAY & PHONEPE-STYLE CHECKOUT MULTI-STEP GATEWAY (MODAL OVERLAY) */}
+      {/* ── MOBILE BOTTOM NAV ────────────────────────────────────────────────── */}
+      <nav className="no-print md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-100 pb-safe z-50 shadow-[0_-1px_20px_rgba(0,0,0,0.06)]">
+        <div className="flex justify-around items-center h-16 max-w-sm mx-auto px-2">
+          {[
+            { k: 'home', icon: Home, label: 'Home' },
+            { k: 'invoices', icon: Receipt, label: 'Fees', badge: calculations.activeInvoicesCount },
+            { k: 'receipts', icon: History, label: 'History' },
+            { k: 'messages', icon: MessageSquare, label: 'Messages' },
+            { k: 'profile', icon: User, label: 'Profile' },
+          ].map(tab => (
+            <button
+              key={tab.k}
+              onClick={() => setActiveTab(tab.k)}
+              className={`relative flex flex-col items-center justify-center gap-0.5 min-w-[52px] py-1 transition-colors ${
+                activeTab === tab.k ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <tab.icon className="w-5 h-5" strokeWidth={activeTab === tab.k ? 2.5 : 2} />
+              {tab.badge > 0 && (
+                <span className="absolute -top-0.5 right-2 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none">
+                  {tab.badge}
+                </span>
+              )}
+              <span className={`text-[9px] font-bold ${activeTab === tab.k ? 'font-black' : ''}`}>{tab.label}</span>
+              {activeTab === tab.k && (
+                <span className="absolute -bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-indigo-600 rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {/* ═══════════════════════════════════════════════════════
+          CHECKOUT GATEWAY MODAL (100% PRESERVED)
+      ════════════════════════════════════════════════════════ */}
       {selectedFee && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm no-print animate-in fade-in duration-200">
-          
-          {/* STEP 3: PROCESSING SCREEN - APPLE PAY BLUR COVER */}
+
+          {/* Processing overlay */}
           {checkoutStep === 'processing' && (
             <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-2xl z-50 flex flex-col items-center justify-center text-center p-6 animate-in fade-in duration-300">
-              
-              {/* Money Pulse Graphics */}
               <div className="relative w-36 h-36 flex items-center justify-center mb-8">
                 <div className="absolute w-24 h-24 bg-indigo-500/20 rounded-full wave-effect" />
                 <div className="absolute w-28 h-28 bg-indigo-500/10 rounded-full wave-effect" style={{ animationDelay: '0.5s' }} />
-                
-                <div className="w-16 h-16 bg-[#5B5CEB] rounded-2xl shadow-xl flex items-center justify-center text-white text-2xl font-bold relative z-10">
+                <div className="w-16 h-16 bg-indigo-600 rounded-2xl shadow-xl flex items-center justify-center text-white text-2xl font-bold relative z-10">
                   <Banknote className="w-8 h-8" />
                 </div>
               </div>
-
               <div className="space-y-4 max-w-xs mx-auto">
-                <div className="text-3xl font-black font-mono text-white">
-                  {formatCurrency(totalPayableAmount)}
-                </div>
-                
-                <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400 font-bold uppercase tracking-wider">
-                  <span>Paying to</span>
-                  <span className="text-white">Greenwood School</span>
-                </div>
-
-                <div className="pt-8">
-                  <div className="text-xs font-black text-indigo-400 uppercase tracking-widest mb-2">
-                    {processingStage}
-                  </div>
-                  {/* Progress track */}
+                <div className="text-3xl font-black font-mono text-white">{formatCurrency(totalPayableAmount)}</div>
+                <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">Processing payment…</div>
+                <div className="pt-6">
+                  <div className="text-xs font-black text-indigo-400 uppercase tracking-widest mb-2">{processingStage}</div>
                   <div className="w-48 h-1 bg-white/10 rounded-full mx-auto overflow-hidden">
-                    <div className="bg-[#5B5CEB] h-full rounded-full transition-all duration-500" style={{ width: `${progressVal}%` }} />
+                    <div className="bg-indigo-500 h-full rounded-full transition-all duration-500" style={{ width: `${progressVal}%` }} />
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* MAIN CHECKOUT BOX CONTAINER */}
-          <div className="w-full max-w-md bg-white rounded-xl shadow-2xl border border-[#E5E7EB] overflow-hidden flex flex-col max-h-[92vh] relative transition-all duration-300">
-            
-            {/* Header / Brand info */}
-            <div className="px-6 py-4 border-b border-[#E5E7EB] flex justify-between items-center text-[#111827]">
+          {/* Checkout container */}
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh] relative">
+
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-xs text-slate-400 uppercase tracking-wider">CampusPay</h3>
-                <span className="text-[11px] font-semibold text-slate-500 block mt-0.5">
-                  Secure Payment Gateway
-                </span>
+                <h3 className="font-black text-xs text-indigo-600 uppercase tracking-wider">CampusPay</h3>
+                <span className="text-[11px] font-semibold text-slate-400 block mt-0.5">Secure Payment Gateway</span>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedFee(null)}
-                className="text-slate-400 hover:text-slate-600 transition-colors bg-slate-50 w-8 h-8 rounded-full flex items-center justify-center border border-[#E5E7EB]"
+                className="text-slate-400 hover:text-slate-600 transition-colors bg-slate-50 w-8 h-8 rounded-full flex items-center justify-center border border-slate-100"
                 disabled={isProcessing}
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Modal scroll area */}
-            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 flex flex-col justify-between min-h-[360px]">
-              
-              {/* STEP 1: PAYMENT SUMMARY & METHOD CHANNELS */}
+            <div className="p-6 overflow-y-auto flex-1 flex flex-col justify-between min-h-[360px]">
+
+              {/* STEP 1: Summary */}
               {checkoutStep === 'summary' && (
                 <div className="space-y-6 flex-1 flex flex-col justify-between">
                   <div className="space-y-5">
-                    
-                    {/* Invoice breakdown list */}
                     <div className="space-y-2">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="font-bold text-sm text-[#111827]">{selectedFee.feeStructure?.feeType?.name}</h4>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">Due: {new Date(selectedFee.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
+                          <h4 className="font-bold text-sm text-slate-900">{selectedFee.feeStructure?.feeType?.name}</h4>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
+                            Due: {new Date(selectedFee.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                          </span>
                         </div>
                       </div>
-
-                      <div className="border-t border-b border-[#E5E7EB] py-3.5 space-y-2 text-[11px] text-slate-550 text-slate-500 font-semibold">
+                      <div className="border-t border-b border-slate-100 py-3.5 space-y-2 text-[11px] text-slate-500 font-semibold">
                         <div className="flex justify-between"><span>Base Fee:</span><span className="text-slate-800">{formatCurrency(Number(selectedFee.amountDue))}</span></div>
-                        {Number(selectedFee.penaltyAmount) > 0 && <div className="flex justify-between text-[#EF4444]"><span>Late Penalty:</span><span>+{formatCurrency(Number(selectedFee.penaltyAmount))}</span></div>}
-                        {Number(selectedFee.waiverAmount) > 0 && <div className="flex justify-between text-[#10B981]"><span>Scholarship:</span><span>-{formatCurrency(Number(selectedFee.waiverAmount))}</span></div>}
+                        {Number(selectedFee.penaltyAmount) > 0 && <div className="flex justify-between text-rose-500"><span>Late Penalty:</span><span>+{formatCurrency(Number(selectedFee.penaltyAmount))}</span></div>}
+                        {Number(selectedFee.waiverAmount) > 0 && <div className="flex justify-between text-emerald-500"><span>Scholarship:</span><span>-{formatCurrency(Number(selectedFee.waiverAmount))}</span></div>}
                         {Number(selectedFee.amountPaid) > 0 && <div className="flex justify-between text-slate-400"><span>Paid:</span><span>{formatCurrency(Number(selectedFee.amountPaid))}</span></div>}
                       </div>
                     </div>
-
                     <div className="flex justify-between items-center pt-2">
                       <span className="text-xs text-slate-500 font-bold">Total:</span>
-                      <span className="text-2xl font-black text-[#111827] font-mono">
-                        {formatCurrency(totalPayableAmount)}
-                      </span>
+                      <span className="text-2xl font-black text-slate-900 font-mono">{formatCurrency(totalPayableAmount)}</span>
                     </div>
-
-                    {/* Method Selector Chips with icons */}
                     <div className="space-y-2 pt-2">
                       <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Payment Method</span>
                       <div className="flex flex-wrap gap-2">
@@ -771,80 +831,64 @@ export default function StudentDashboard() {
                             type="button"
                             onClick={() => setPayMethod(method.k)}
                             className={`px-4 py-2 rounded-full border text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                              payMethod === method.k 
-                                ? 'bg-white border-[#5B5CEB] text-[#5B5CEB] shadow-sm font-semibold' 
-                                : 'bg-[#F8FAFC] border-[#E5E7EB] text-slate-600 hover:bg-slate-50'
+                              payMethod === method.k
+                                ? 'bg-white border-indigo-600 text-indigo-600 shadow-sm font-bold'
+                                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                             }`}
                           >
-                            <span>{method.icon}</span>
-                            <span>{method.label}</span>
+                            {method.icon}{method.label}
                           </button>
                         ))}
                       </div>
                     </div>
                   </div>
-
-                  <button 
+                  <button
                     onClick={() => setCheckoutStep('details')}
-                    className="w-full bg-[#5B5CEB] hover:bg-[#4a4bd1] text-white py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all shadow-sm mt-4"
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl text-sm font-bold transition-all shadow-sm mt-4 flex items-center justify-center gap-2"
                   >
-                    Continue <ArrowRight className="w-4 h-4 ml-1" />
+                    Continue <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               )}
 
-              {/* STEP 2: METHOD DETAILS (UPI QR or Card Live visualization) */}
+              {/* STEP 2: Details */}
               {checkoutStep === 'details' && (
                 <div className="space-y-6 flex-1 flex flex-col justify-between">
-                  
-                  {/* Back header */}
-                  <button 
+                  <button
                     onClick={() => setCheckoutStep('summary')}
-                    className="text-[10px] font-bold text-slate-400 uppercase tracking-wider hover:text-slate-600 transition-colors w-fit"
+                    className="text-[10px] font-bold text-slate-400 uppercase tracking-wider hover:text-slate-600 transition-colors w-fit flex items-center gap-1"
                   >
-                    <ArrowLeft className="w-4 h-4 mr-1" /> Back to Summary
+                    <ArrowLeft className="w-3.5 h-3.5" /> Back to Summary
                   </button>
 
                   <div className="space-y-4 flex-1">
-
-                    {/* UPI DETAILS */}
+                    {/* UPI */}
                     {payMethod === 'UPI' && (
                       <div className="space-y-4">
-                        <div className="p-4 bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl flex flex-col items-center justify-center space-y-3 relative">
+                        <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl flex flex-col items-center justify-center space-y-3 relative">
                           <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Scan QR Code</span>
-                          
-                          {/* QR Enlarge frame */}
-                          <div 
+                          <div
                             onClick={() => setEnlargeQr(!enlargeQr)}
-                            className={`bg-white border border-[#E5E7EB] rounded-xl flex flex-col items-center justify-center p-3 shadow-sm cursor-pointer transition-all duration-300 ${
-                              enlargeQr ? 'scale-110' : 'hover:scale-102'
-                            }`}
+                            className={`bg-white border border-slate-200 rounded-xl flex flex-col items-center justify-center p-3 shadow-sm cursor-pointer transition-all duration-300 ${enlargeQr ? 'scale-110' : 'hover:scale-105'}`}
                           >
                             <QrCode className={`${enlargeQr ? 'w-28 h-28' : 'w-20 h-20'} text-slate-800 transition-all duration-300`} />
                             <span className="text-[7px] font-mono text-slate-400 mt-1.5 uppercase font-bold tracking-wider">
                               {enlargeQr ? 'Touch to Minimize' : 'Touch to Enlarge'}
                             </span>
                           </div>
-
                           <div className="text-[10px] text-slate-500 font-bold space-y-1 text-center">
-                            <span className="flex items-center gap-1 text-[#5B5CEB] justify-center">
+                            <span className="flex items-center gap-1 text-indigo-600 justify-center">
                               <Clock className="w-3.5 h-3.5 animate-spin" />
                               Time Remaining: {formatTimer(countdown)}
                             </span>
                           </div>
                         </div>
-
-                        {/* UPI Brand selector bubbles */}
                         <div className="space-y-2">
-                          <span className="text-[9px] text-slate-450 text-slate-400 font-bold uppercase tracking-wider block text-center">Waiting for Payment...</span>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block text-center">Waiting for Payment…</span>
                           <div className="grid grid-cols-3 gap-2">
                             {['Open GPay', 'Open PhonePe', 'Open Paytm'].map((app, i) => (
-                              <button 
-                                key={i}
-                                type="button"
-                                onClick={handleConfirmCheckout}
-                                className="py-2 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 border border-[#E5E7EB] text-[10px] font-bold text-slate-600 transition-colors shadow-sm text-center"
-                              >
+                              <button key={i} type="button" onClick={handleConfirmCheckout}
+                                className="py-2 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-100 text-[10px] font-bold text-slate-600 transition-colors shadow-sm text-center">
                                 {app}
                               </button>
                             ))}
@@ -853,38 +897,22 @@ export default function StudentDashboard() {
                       </div>
                     )}
 
-                    {/* CARD DETAILS WITH DESKTOP SPLIT SCREEN */}
+                    {/* CARD */}
                     {payMethod === 'CARD' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                        
-                        {/* 3D Flipping Card Graphics (Left column) */}
                         <div className="perspective-container w-full h-[145px] relative mx-auto max-w-[260px]">
                           <div className={`card-inner w-full h-full relative ${isCardFlipped ? 'flipped' : ''}`}>
-                            
-                            {/* FRONT SIDE */}
                             <div className="card-front bg-gradient-to-br from-slate-900 to-indigo-950 rounded-xl p-4 text-white flex flex-col justify-between shadow-md border border-white/10 overflow-hidden">
                               <div className="flex justify-between items-start">
                                 <span className="text-[8px] font-bold tracking-wider text-indigo-300">CampusPay Visa</span>
                                 <CreditCard className="w-6 h-4 text-yellow-400" />
                               </div>
-                              
-                              <div className="text-sm font-mono tracking-widest text-center py-2">
-                                {cardNumber || '•••• •••• •••• ••••'}
-                              </div>
-
+                              <div className="text-sm font-mono tracking-widest text-center py-2">{cardNumber || '•••• •••• •••• ••••'}</div>
                               <div className="flex justify-between items-end text-[8px] font-mono uppercase tracking-wider text-slate-300">
-                                <div>
-                                  <span className="block text-[5px] text-slate-400 mb-0.5">Cardholder</span>
-                                  <span className="font-bold">{cardName || 'ROHAN SHARMA'}</span>
-                                </div>
-                                <div className="text-right">
-                                  <span className="block text-[5px] text-slate-400 mb-0.5">Expiry</span>
-                                  <span className="font-bold">{cardExpiry || 'MM/YY'}</span>
-                                </div>
+                                <div><span className="block text-[5px] text-slate-400 mb-0.5">Cardholder</span><span className="font-bold">{cardName || 'YOUR NAME'}</span></div>
+                                <div className="text-right"><span className="block text-[5px] text-slate-400 mb-0.5">Expiry</span><span className="font-bold">{cardExpiry || 'MM/YY'}</span></div>
                               </div>
                             </div>
-
-                            {/* BACK SIDE */}
                             <div className="card-back bg-gradient-to-br from-slate-950 to-indigo-950 rounded-xl p-4 text-white flex flex-col justify-between shadow-md border border-white/10 overflow-hidden">
                               <div className="w-full h-7 bg-slate-800 -mx-4 mt-1" />
                               <div className="flex justify-end items-center gap-3 mt-1">
@@ -894,79 +922,48 @@ export default function StudentDashboard() {
                                   <span className="font-mono text-[10px] font-bold text-indigo-300 bg-black/30 px-1.5 py-0.5 rounded">{cardCvv || '•••'}</span>
                                 </div>
                               </div>
-                              <div className="text-[6px] text-slate-500 font-semibold tracking-wider uppercase text-left">
-                                Secured Sandbox Transaction
-                              </div>
+                              <div className="text-[6px] text-slate-500 font-semibold tracking-wider uppercase">Secured Sandbox</div>
                             </div>
-
                           </div>
                         </div>
-
-                        {/* Fields Form (Right column) */}
-                        <div className="space-y-2 text-[10px] font-bold text-slate-605 text-slate-600">
-                          <div>
-                            <label className="block mb-0.5 uppercase tracking-wider text-[7px]">Cardholder Name</label>
-                            <input 
-                              type="text" 
-                              placeholder="ROHAN SHARMA" 
-                              value={cardName}
-                              onChange={(e) => setCardName(e.target.value.toUpperCase())}
-                              className="w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-lg px-3 py-2 text-xs text-slate-850 text-slate-800 focus:outline-none focus:border-[#5B5CEB] focus:bg-white transition-colors"
-                              onFocus={() => setIsCardFlipped(false)}
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block mb-0.5 uppercase tracking-wider text-[7px]">Card Number</label>
-                            <input 
-                              type="text" 
-                              placeholder="4111 2222 3333 4444" 
-                              value={cardNumber}
-                              onChange={handleCardNumberChange}
-                              className="w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-lg px-3 py-2 text-xs text-slate-850 text-slate-800 focus:outline-none focus:border-[#5B5CEB] focus:bg-white transition-colors"
-                              onFocus={() => setIsCardFlipped(false)}
-                              required
-                            />
-                          </div>
+                        <div className="space-y-2 text-[10px] font-bold text-slate-600">
+                          {[
+                            { label: 'Cardholder Name', ph: 'YOUR NAME', val: cardName, set: (v) => setCardName(v.toUpperCase()), flip: false },
+                            { label: 'Card Number', ph: '4111 2222 3333 4444', val: cardNumber, set: handleCardNumberChange, flip: false, raw: true },
+                          ].map((f, i) => (
+                            <div key={i}>
+                              <label className="block mb-0.5 uppercase tracking-wider text-[7px]">{f.label}</label>
+                              <input type="text" placeholder={f.ph} value={f.val}
+                                onChange={f.raw ? f.set : (e) => f.set(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 focus:bg-white transition-colors"
+                                onFocus={() => setIsCardFlipped(false)} />
+                            </div>
+                          ))}
                           <div className="grid grid-cols-2 gap-2">
                             <div>
                               <label className="block mb-0.5 uppercase tracking-wider text-[7px]">Expiry</label>
-                              <input 
-                                type="text" 
-                                placeholder="MM/YY" 
-                                value={cardExpiry}
+                              <input type="text" placeholder="MM/YY" value={cardExpiry}
                                 onChange={(e) => setCardExpiry(e.target.value)}
-                                className="w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-lg px-3 py-2 text-xs text-slate-850 text-slate-800 focus:outline-none focus:border-[#5B5CEB] focus:bg-white transition-colors"
-                                onFocus={() => setIsCardFlipped(false)}
-                                maxLength={5}
-                                required
-                              />
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 focus:bg-white transition-colors"
+                                onFocus={() => setIsCardFlipped(false)} maxLength={5} />
                             </div>
                             <div>
                               <label className="block mb-0.5 uppercase tracking-wider text-[7px]">CVV</label>
-                              <input 
-                                type="password" 
-                                placeholder="•••" 
-                                value={cardCvv}
+                              <input type="password" placeholder="•••" value={cardCvv}
                                 onChange={(e) => setCardCvv(e.target.value)}
-                                className="w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-lg px-3 py-2 text-xs text-slate-850 text-slate-800 focus:outline-none focus:border-[#5B5CEB] focus:bg-white transition-colors"
-                                onFocus={() => setIsCardFlipped(true)}
-                                onBlur={() => setIsCardFlipped(false)}
-                                maxLength={3}
-                                required
-                              />
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 focus:bg-white transition-colors"
+                                onFocus={() => setIsCardFlipped(true)} onBlur={() => setIsCardFlipped(false)} maxLength={3} />
                             </div>
                           </div>
                         </div>
-
                       </div>
                     )}
 
-                    {/* Netbanking dropdown */}
+                    {/* Net Banking */}
                     {payMethod === 'NETBANKING' && (
-                      <div className="bg-[#F8FAFC] p-4 border border-[#E5E7EB] rounded-xl space-y-2">
+                      <div className="bg-slate-50 p-4 border border-slate-100 rounded-xl space-y-2">
                         <label className="block text-[8px] text-slate-400 font-bold uppercase tracking-wider">Select Banking Partner</label>
-                        <select className="w-full bg-white border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none">
+                        <select className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none">
                           <option value="sbi">State Bank of India (Sandbox)</option>
                           <option value="hdfc">HDFC Bank (Sandbox)</option>
                           <option value="icici">ICICI Bank (Sandbox)</option>
@@ -974,26 +971,24 @@ export default function StudentDashboard() {
                       </div>
                     )}
 
-                    {/* Wallet dropdown */}
+                    {/* Wallet */}
                     {payMethod === 'WALLET' && (
-                      <div className="bg-[#F8FAFC] p-4 border border-[#E5E7EB] rounded-xl space-y-2">
+                      <div className="bg-slate-50 p-4 border border-slate-100 rounded-xl space-y-2">
                         <label className="block text-[8px] text-slate-400 font-bold uppercase tracking-wider">Select Wallet Partner</label>
-                        <select className="w-full bg-white border border-[#E5E7EB] rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none">
+                        <select className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-800 focus:outline-none">
                           <option value="paytm">Paytm Wallet (Sandbox)</option>
                           <option value="phonepe">PhonePe Wallet (Sandbox)</option>
                           <option value="amazon">Amazon Pay (Sandbox)</option>
                         </select>
                       </div>
                     )}
-
                   </div>
 
-                  {/* Submit CTA button */}
                   {payMethod !== 'UPI' && (
                     <form onSubmit={handleConfirmCheckout}>
-                      <button 
+                      <button
                         type="submit"
-                        className="w-full bg-[#5B5CEB] hover:bg-[#4a4bd1] text-white py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all shadow-sm mt-4 animate-in fade-in"
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl text-sm font-bold transition-all shadow-sm mt-4"
                       >
                         Pay {formatCurrency(totalPayableAmount)}
                       </button>
@@ -1002,60 +997,52 @@ export default function StudentDashboard() {
                 </div>
               )}
 
-              {/* STEP 4: SUCCESS VIEW */}
+              {/* STEP 4: Success */}
               {checkoutStep === 'success' && (
                 <div className="my-auto text-center space-y-6 py-6 flex flex-col items-center justify-center animate-in zoom-in-95 duration-200">
-                  
-                  {/* Tick icon */}
-                  <div className="w-12 h-12 bg-emerald-50 border border-emerald-100 text-[#10B981] rounded-full flex items-center justify-center mx-auto shadow-sm">
-                    <CheckCircle2 className="w-7 h-7" />
+                  <div className="w-14 h-14 bg-emerald-50 border border-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                    <CheckCircle2 className="w-8 h-8" />
                   </div>
-
                   <div className="space-y-1">
-                    <h3 className="text-base font-bold text-[#111827] tracking-tight flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-500" /> Payment Successful</h3>
-                    <div className="text-2xl font-black text-[#111827] font-mono tracking-tight mt-1">
+                    <h3 className="text-base font-bold text-slate-900 tracking-tight">Payment Successful</h3>
+                    <div className="text-3xl font-black text-slate-900 font-mono tracking-tight mt-1">
                       {createdTxn ? formatCurrency(Number(createdTxn.amount)) : ''}
                     </div>
                   </div>
-
                   {createdTxn && (
-                    <div className="w-full p-4 bg-slate-50 border border-[#E5E7EB] rounded-xl text-[10px] space-y-2 text-slate-500 font-bold text-left max-w-xs mx-auto">
-                      <div className="flex justify-between border-b border-slate-205 pb-1.5">
+                    <div className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl text-[10px] space-y-2 text-slate-500 font-bold text-left max-w-xs mx-auto">
+                      <div className="flex justify-between border-b border-slate-200 pb-1.5">
                         <span>Receipt ID</span>
-                        <span className="font-mono text-slate-800 uppercase">CP-{(createdTxn.id || '').substring(0,8).toUpperCase()}</span>
+                        <span className="font-mono text-slate-800 uppercase">CP-{(createdTxn.id || '').substring(0, 8).toUpperCase()}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Payment Channel</span>
-                        <span className="text-slate-850 text-slate-800 uppercase">{createdTxn.method}</span>
+                        <span className="text-slate-800 uppercase">{createdTxn.method}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Receipt Copy</span>
-                        <span className="text-[#10B981] flex items-center gap-1">Generated <CheckCircle2 className="w-3 h-3" /></span>
+                        <span className="text-emerald-500 flex items-center gap-1">Generated <CheckCircle2 className="w-3 h-3" /></span>
                       </div>
                     </div>
                   )}
-
-                  <div className="flex flex-col gap-2 w-full max-w-xs pt-4">
-                    <button 
+                  <div className="flex flex-col gap-2 w-full max-w-xs pt-2">
+                    <button
                       onClick={() => {
                         if (createdTxn) {
                           const printableObj = {
                             ...createdTxn,
-                            studentFee: {
-                              ...selectedFee,
-                              student: { user: { name: user.name } }
-                            }
+                            studentFee: { ...selectedFee, student: { user: { name: user.name } } }
                           };
                           handleTriggerPrint(printableObj);
                         }
                       }}
-                      className="w-full bg-[#5B5CEB] hover:bg-[#4a4bd1] text-white py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1 shadow-sm"
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-sm"
                     >
-                      Download Receipt
+                      <Download className="w-4 h-4" /> Download Receipt
                     </button>
-                    <button 
+                    <button
                       onClick={() => setSelectedFee(null)}
-                      className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors"
+                      className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 py-3.5 rounded-xl text-sm font-bold transition-colors"
                     >
                       Back to Dashboard
                     </button>
@@ -1064,40 +1051,17 @@ export default function StudentDashboard() {
               )}
 
             </div>
-
           </div>
         </div>
       )}
 
-      {/* PRINT-ONLY PORTAL (STANDALONE RECEIPT PRINT ENGINE) */}
+      {/* ── PRINT PORTAL ─────────────────────────────────────────────────────── */}
       {printReceiptData && createPortal(
         <div className="print-only fixed inset-0 z-[10000] bg-white text-black p-0">
           <PrintReceipt transaction={printReceiptData} />
         </div>,
         document.body
       )}
-
-      {/* BOTTOM NAVIGATION BAR (iOS / Mobile style - Sticky) */}
-      <nav className="no-print md:hidden fixed bottom-0 left-0 right-0 bg-white/85 backdrop-blur-lg border-t border-[#E5E7EB] py-3 px-6 flex justify-between items-center z-50 shadow-lg max-w-[480px] mx-auto rounded-t-2xl">
-        {[
-          { k: 'home', icon: <Home className="w-5 h-5" />, label: 'Home' },
-          { k: 'invoices', icon: <FileText className="w-5 h-5" />, label: 'Dues' },
-          { k: 'receipts', icon: <Download className="w-5 h-5" />, label: 'Receipts' },
-          { k: 'messages', icon: <MessageSquare className="w-5 h-5" />, label: 'Chat' },
-          { k: 'profile', icon: <User className="w-5 h-5" />, label: 'Profile' }
-        ].map(tab => (
-          <button 
-            key={tab.k}
-            onClick={() => setActiveTab(tab.k)}
-            className={`flex flex-col items-center justify-center transition-all ${
-              activeTab === tab.k ? 'text-[#5B5CEB] scale-105' : 'text-slate-400 hover:text-slate-650'
-            }`}
-          >
-            {tab.icon}
-            <span className="text-[9px] font-bold uppercase tracking-wider mt-1">{tab.label}</span>
-          </button>
-        ))}
-      </nav>
 
     </div>
   );
