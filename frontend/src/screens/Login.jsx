@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Mail, Loader2, Sparkles, School, Eye, EyeOff, ShieldCheck, CheckCircle2, ChevronRight, Landmark, TrendingUp, Users, GraduationCap, Smartphone, FileText, Briefcase } from 'lucide-react';
+import { Lock, Mail, Loader2, Sparkles, School, Eye, EyeOff, ShieldCheck, CheckCircle2, ChevronRight, ChevronLeft, Landmark, TrendingUp, Users, GraduationCap, Smartphone, FileText, Briefcase } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -97,6 +97,14 @@ export default function Login() {
       className="min-h-screen w-full bg-[#070913] text-white font-sans antialiased overflow-hidden relative flex flex-col md:flex-row items-center justify-between"
     >
       
+      {/* Back Button */}
+      <button 
+        onClick={() => navigate('/')}
+        className="absolute top-6 left-6 z-50 flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-xs font-bold text-slate-300 hover:text-white backdrop-blur-md transition-all shadow-lg"
+      >
+        <ChevronLeft className="w-4 h-4" /> Back to Home
+      </button>
+
       {/* 1. Cinematic Spotlight following cursor */}
       <div 
         className="absolute pointer-events-none inset-0 transition-opacity duration-300 z-0"
