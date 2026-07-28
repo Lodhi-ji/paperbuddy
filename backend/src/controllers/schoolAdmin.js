@@ -1024,15 +1024,30 @@ export async function sendFeeReminder(req, res) {
       return res.status(400).json({ error: 'Fee is already paid' });
     }
 
+    const studentUserId = studentFee.student.user.id;
     const emailTo = studentFee.student.user.email;
     const studentName = studentFee.student.user.name;
     const totalDue = Number(studentFee.amountDue) + Number(studentFee.penaltyAmount) - Number(studentFee.amountPaid) - Number(studentFee.waiverAmount);
+    const amountDue = Math.max(0, totalDue);
+    const dueDateString = new Date(studentFee.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 
     const feeDetails = {
       feeName: studentFee.feeStructure.feeType.name,
-      amountDue: Math.max(0, totalDue),
+      amountDue,
       dueDate: studentFee.dueDate
     };
+
+    // Create in-app message in the conversation so the student sees it in chat
+    const reminderMessage = `📋 Fee Payment Reminder\n\nDear ${studentName},\n\nThis is an official reminder that you have an outstanding fee payment pending:\n\n• Fee: ${feeDetails.feeName}\n• Amount Due: ₹${amountDue}\n• Due Date: ${dueDateString}\n\nPlease ensure payment is made by the due date to avoid late penalties. You can pay directly through the portal.\n\nRegards,\nCampusPay Finance Team`;
+
+    await prisma.message.create({
+      data: {
+        schoolId,
+        senderId: req.user.id,
+        receiverId: studentUserId,
+        content: reminderMessage
+      }
+    });
 
     // Respond immediately — fire email in the background so UI never hangs
     res.status(200).json({ message: 'Reminder dispatched successfully' });
