@@ -1034,13 +1034,17 @@ export async function sendFeeReminder(req, res) {
       dueDate: studentFee.dueDate
     };
 
-    const emailResult = await sendFeeReminderEmail(emailTo, studentName, feeDetails);
-    
-    if (!emailResult.success) {
-      return res.status(500).json({ error: 'Failed to send reminder email' });
-    }
+    // Respond immediately — fire email in the background so UI never hangs
+    res.status(200).json({ message: 'Reminder dispatched successfully' });
 
-    return res.status(200).json({ message: 'Reminder email sent successfully' });
+    // Background email send (non-blocking)
+    sendFeeReminderEmail(emailTo, studentName, feeDetails)
+      .then(result => {
+        if (!result.success) console.error('Background email failed:', result.error);
+        else console.log('Fee reminder email sent in background:', result.messageId);
+      })
+      .catch(err => console.error('Background email error:', err));
+
   } catch (error) {
     console.error('Send fee reminder error:', error);
     return res.status(500).json({ error: 'Internal server error' });
