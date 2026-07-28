@@ -12,7 +12,27 @@ services:
         sync: false # You will provide this securely in the Render dashboard
       - key: JWT_SECRET
         generateValue: true # Render will automatically generate a secure secret for you
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: "7d"
       - key: PORT
         value: 5001
       - key: FRONTEND_URL
         sync: false # You will update this with your Vercel URL later
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        value: "Campus Pay <ritiklodhi35@gmail.com>"
