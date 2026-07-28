@@ -102,6 +102,44 @@ export default function StudentProfile360({ student, onClose, onEdit, onDelete, 
     });
   }
 
+  const allTxns = (student?.studentFees || [])
+    .flatMap(fee => (fee.transactions || []).map(t => ({ ...t, feeName: fee.feeStructure?.feeType?.name })))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  const penaltyEvents = (student?.studentFees || [])
+    .filter(f => Number(f.penaltyAmount) > 0)
+    .map(f => ({
+      type: 'penalty',
+      feeName: f.feeStructure?.feeType?.name,
+      amount: Number(f.penaltyAmount),
+      createdAt: f.dueDate,
+      id: `penalty-${f.id}`
+    }));
+
+  const waiverEvents = (student?.studentFees || [])
+    .filter(f => Number(f.waiverAmount) > 0)
+    .map(f => ({
+      type: 'waiver',
+      feeName: f.feeStructure?.feeType?.name,
+      amount: Number(f.waiverAmount),
+      reason: f.waiverReason,
+      createdAt: f.dueDate,
+      id: `waiver-${f.id}`
+    }));
+
+  const allEvents = [
+    ...allTxns.map(t => ({ ...t, type: 'payment' })),
+    ...penaltyEvents,
+    ...waiverEvents
+  ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  const lastPaymentText = allTxns.length > 0 
+    ? new Date(allTxns[0].createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    : 'No Payments Yet';
+  const lastPaymentAmount = allTxns.length > 0
+    ? formatCurrencyLegacy(allTxns[0].amount)
+    : '-';
+
 
   return (
     <div className="fixed inset-0 bg-slate-50 z-[100] overflow-y-auto no-scrollbar animate-in slide-in-from-right-8 duration-300">
@@ -353,8 +391,8 @@ export default function StudentProfile360({ student, onClose, onEdit, onDelete, 
                     <div className="text-[10px] font-bold text-blue-600/70 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-blue-500" /> Last Payment
                     </div>
-                    <div className="text-sm font-bold text-slate-400 mt-2">No Payments Yet</div>
-                    <div className="text-[10px] font-medium text-slate-400/80">-</div>
+                    <div className="text-sm font-bold text-slate-400 mt-2">{lastPaymentText}</div>
+                    <div className="text-[10px] font-medium text-slate-400/80">{lastPaymentAmount}</div>
                   </div>
                 </div>
               </div>
@@ -505,37 +543,6 @@ export default function StudentProfile360({ student, onClose, onEdit, onDelete, 
 
               {/* Activity Log */}
               {(() => {
-                const allTxns = (student.studentFees || [])
-                  .flatMap(fee => (fee.transactions || []).map(t => ({ ...t, feeName: fee.feeStructure?.feeType?.name })))
-                  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-                const penaltyEvents = (student.studentFees || [])
-                  .filter(f => Number(f.penaltyAmount) > 0)
-                  .map(f => ({
-                    type: 'penalty',
-                    feeName: f.feeStructure?.feeType?.name,
-                    amount: Number(f.penaltyAmount),
-                    createdAt: f.dueDate,
-                    id: `penalty-${f.id}`
-                  }));
-
-                const waiverEvents = (student.studentFees || [])
-                  .filter(f => Number(f.waiverAmount) > 0)
-                  .map(f => ({
-                    type: 'waiver',
-                    feeName: f.feeStructure?.feeType?.name,
-                    amount: Number(f.waiverAmount),
-                    reason: f.waiverReason,
-                    createdAt: f.dueDate,
-                    id: `waiver-${f.id}`
-                  }));
-
-                const allEvents = [
-                  ...allTxns.map(t => ({ ...t, type: 'payment' })),
-                  ...penaltyEvents,
-                  ...waiverEvents
-                ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
                 return (
                   <div className="glass-card rounded-3xl border border-white/40 shadow-premium overflow-hidden bg-white/50">
                     <div className="p-6 border-b border-slate-100 bg-white/40 flex items-center justify-between">

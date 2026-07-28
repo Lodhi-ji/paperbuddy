@@ -342,7 +342,7 @@ export default function Login() {
                 { role: 'Super Admin', email: 'superadmin@campuspay.com', pass: 'SuperAdmin123!' },
                 { role: 'School Admin', email: 'admin@greenwood.com', pass: 'Admin123!' },
                 { role: 'Accountant', email: 'accountant@greenwood.com', pass: 'Accountant123!' },
-                { role: 'Student', email: 'student@greenwood.com', pass: 'Student123!' }
+                { role: 'Student', email: 'student@greenwood.com', pass: '111111' }
               ].map((item, i) => (
                 <button
                   key={i}

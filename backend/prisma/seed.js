@@ -20,7 +20,7 @@ async function main() {
 
   const adminHash = bcrypt.hashSync('Admin123!', 10);
   const accountantHash = bcrypt.hashSync('Accountant123!', 10);
-  const studentHash = bcrypt.hashSync('Student123!', 10);
+  const studentHash = bcrypt.hashSync('111111', 10);
 
   // 1. Create Super Admin
   const superAdminHash = bcrypt.hashSync('SuperAdmin123!', 10);

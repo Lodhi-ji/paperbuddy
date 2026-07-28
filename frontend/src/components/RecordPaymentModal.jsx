@@ -26,6 +26,9 @@ export default function RecordPaymentModal({ fee, onClose }) {
       queryClient.invalidateQueries({ queryKey: ['accountant-students'] });
       queryClient.invalidateQueries({ queryKey: ['schoolMetrics'] });
       queryClient.invalidateQueries({ queryKey: ['accountant-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['adminTransactions'] });
+      queryClient.invalidateQueries({ queryKey: ['accountantTransactions'] });
+      queryClient.invalidateQueries({ queryKey: ['schoolTransactions'] });
       onClose();
     },
     onError: (err) => {

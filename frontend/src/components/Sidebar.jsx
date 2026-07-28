@@ -13,7 +13,8 @@ import {
   ChevronLeft,
   ChevronRight,
   School,
-  MessageSquare
+  MessageSquare,
+  AlertTriangle
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
@@ -29,7 +30,11 @@ export default function Sidebar({ activeTab, setActiveTab }) {
     navigate('/login');
   };
 
-  const navItems = [
+  const navItems = user?.role === 'ACCOUNTANT' ? [
+    { id: 'outstanding-dues', label: 'Outstanding Dues', icon: AlertTriangle },
+    { id: 'students-all', label: 'Student Directory', icon: GraduationCap },
+    { id: 'transactions', label: 'Transaction Center', icon: Receipt },
+  ] : [
     { id: 'analytics', label: 'Dashboard', icon: TrendingUp },
     { 
       id: 'students', 
@@ -46,11 +51,6 @@ export default function Sidebar({ activeTab, setActiveTab }) {
     { id: 'transactions', label: 'Transaction Center', icon: Receipt },
     { id: 'accountants', label: 'Staff Accounts', icon: ShieldCheck },
     { id: 'messages', label: 'Messages', icon: MessageSquare },
-  ];
-
-  const bottomItems = [
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   return (
@@ -142,25 +142,6 @@ export default function Sidebar({ activeTab, setActiveTab }) {
                 </div>
               )}
             </div>
-          );
-        })}
-
-        <div className="my-4 border-t border-slate-200/50 mx-2" />
-
-        {/* Bottom Nav */}
-        {bottomItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.id}
-              className="group flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 text-slate-500 hover:bg-white/60 hover:text-slate-700"
-              title={!isExpanded ? item.label : ''}
-            >
-              <Icon className="w-5 h-5 shrink-0 group-hover:scale-110 transition-transform" />
-              <span className={`font-bold text-xs whitespace-nowrap transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0 w-0 hidden'}`}>
-                {item.label}
-              </span>
-            </button>
           );
         })}
       </nav>

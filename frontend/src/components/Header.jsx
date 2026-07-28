@@ -78,7 +78,7 @@ export default function Header() {
   };
 
   return (
-    <header className="flex items-center justify-between pt-4 pb-2 mb-4">
+    <header className="flex items-center justify-between pt-4 pb-2 mb-2 px-4 md:px-8">
       {/* Left: Titles & Greeting */}
       <div>
         <h1 className="text-2xl font-black text-slate-800 tracking-tight leading-none">
@@ -91,18 +91,6 @@ export default function Header() {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-4">
-        {/* Action Icons */}
-        <div className="flex items-center gap-2">
-          <button className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 hover:text-brand-primary hover:border-brand-primary/30 transition-all">
-            <Bell className="w-4 h-4" />
-          </button>
-          <button className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 hover:text-brand-primary hover:border-brand-primary/30 transition-all">
-            <Moon className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Divider */}
-        <div className="h-8 w-px bg-slate-200 mx-1" />
 
         {/* Profile */}
         <div className="flex items-center gap-3 relative" ref={dropdownRef}>

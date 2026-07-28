@@ -570,11 +570,11 @@ export default function SchoolAdminDashboard() {
     <div className="flex h-screen overflow-hidden bg-slate-50 font-sans">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       
-      <main className="flex-1 overflow-y-auto px-8 pb-12 relative">
+      <main className="flex-1 overflow-y-auto relative">
         <Header />
 
         {/* Tabs panels content */}
-        <div className="space-y-6">
+        <div className="px-4 md:px-8 pt-0 pb-12 space-y-6">
 
           {/* PANEL 1: OVERVIEW METRICS */}
           {activeTab === 'analytics' && (
@@ -982,19 +982,22 @@ export default function SchoolAdminDashboard() {
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input 
                     type="text" 
-                    placeholder="Search Students..." 
+                    placeholder="Search Students..."
+                    value={studentSearch}
+                    onChange={(e) => setStudentSearch(e.target.value)}
                     className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 focus:border-brand-primary/50 focus:ring-2 focus:ring-brand-primary/20 rounded-xl text-xs font-medium shadow-sm transition-all outline-none"
                   />
                 </div>
                 <div className="hidden md:flex items-center gap-2">
-                  <select className="bg-white border border-slate-200 text-slate-600 rounded-xl px-3 py-2 text-xs font-bold outline-none cursor-pointer">
-                    <option value="">Class</option>
-                  </select>
-                  <select className="bg-white border border-slate-200 text-slate-600 rounded-xl px-3 py-2 text-xs font-bold outline-none cursor-pointer">
-                    <option value="">Section</option>
-                  </select>
-                  <select className="bg-white border border-slate-200 text-slate-600 rounded-xl px-3 py-2 text-xs font-bold outline-none cursor-pointer">
-                    <option value="">Status</option>
+                  <select 
+                    value={selectedClassFilter} 
+                    onChange={(e) => setSelectedClassFilter(e.target.value)}
+                    className="bg-white border border-slate-200 text-slate-600 rounded-xl px-3 py-2 text-xs font-bold outline-none cursor-pointer"
+                  >
+                    <option value="">All Classes</option>
+                    {[...Array(12)].map((_, i) => (
+                      <option key={i + 1} value={String(i + 1)}>Class {i + 1}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -1027,7 +1030,13 @@ export default function SchoolAdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {students.map((st) => {
+                      {students
+                        .filter(st => {
+                          const matchSearch = studentSearch ? (st.user.name.toLowerCase().includes(studentSearch.toLowerCase()) || st.rollNumber.toLowerCase().includes(studentSearch.toLowerCase())) : true;
+                          const matchClass = selectedClassFilter ? st.class === selectedClassFilter : true;
+                          return matchSearch && matchClass;
+                        })
+                        .map((st) => {
                         const totalAssigned = st.studentFees?.reduce((sum, f) => sum + Number(f.amountDue), 0) || 0;
                         const hasUnpaidMandatory = st.studentFees?.some(f => f.feeStructure?.feeType?.isVariable === false && f.status !== 'PAID');
                         

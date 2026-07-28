@@ -109,8 +109,7 @@ function HeroCarousel({ slides, onCtaClick, userName }) {
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-2xl md:rounded-3xl select-none"
-      style={{ aspectRatio: '16/6' }}
+      className="relative w-full h-[320px] md:h-[400px] overflow-hidden rounded-2xl md:rounded-[24px] select-none mx-auto max-w-[1280px]"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onTouchStart={handleTouchStart}
@@ -134,7 +133,7 @@ function HeroCarousel({ slides, onCtaClick, userName }) {
       ))}
 
       {/* Text Content */}
-      <div className="absolute inset-0 z-20 flex flex-col justify-end p-6 md:p-10">
+      <div className="absolute inset-0 z-20 flex flex-col justify-end p-6 md:p-10 max-w-[550px]">
         <div
           key={current}
           style={{ animation: 'slideUp 0.5s ease forwards' }}
@@ -197,23 +196,23 @@ function ActionCard({ icon: Icon, iconBg, title, subtitle, badge, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="group relative bg-white border border-slate-100 rounded-2xl p-5 text-left flex flex-col gap-3 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 active:scale-[0.98] min-h-[120px]"
+      className="group relative bg-white border border-slate-100 rounded-2xl md:rounded-3xl p-5 md:p-6 text-left flex flex-col gap-3 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 active:scale-[0.98] aspect-square sm:aspect-auto sm:min-h-[130px] md:min-h-[140px]"
     >
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg} flex-shrink-0`}>
-        <Icon className="w-5 h-5" />
+      <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center ${iconBg} flex-shrink-0`}>
+        <Icon className="w-5 h-5 md:w-6 md:h-6" />
       </div>
-      <div className="flex-1">
+      <div className="flex-1 flex flex-col justify-end md:justify-start mt-auto md:mt-2">
         <div className="flex items-center gap-2">
-          <span className="text-[15px] font-bold text-slate-900 leading-snug">{title}</span>
+          <span className="text-[15px] md:text-[16px] font-bold text-slate-900 leading-snug">{title}</span>
           {badge && (
-            <span className="text-[10px] font-black bg-indigo-600 text-white px-1.5 py-0.5 rounded-full leading-none">
+            <span className="text-[10px] md:text-[11px] font-black bg-indigo-600 text-white px-1.5 py-0.5 rounded-full leading-none">
               {badge}
             </span>
           )}
         </div>
-        <p className="text-[13px] text-slate-400 font-medium mt-0.5 leading-snug">{subtitle}</p>
+        <p className="text-[12px] md:text-[13px] text-slate-400 font-medium mt-1 leading-snug line-clamp-1">{subtitle}</p>
       </div>
-      <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all absolute bottom-4 right-4" />
+      <ArrowRight className="w-4 h-4 md:w-5 md:h-5 text-slate-200 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all absolute bottom-5 right-5 md:bottom-6 md:right-6" />
     </button>
   );
 }
@@ -463,13 +462,13 @@ export default function StudentDashboard() {
 
       {/* ── HEADER ─────────────────────────────────────────────────────────────── */}
       <header className="no-print sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-slate-100/80">
-        <div className="max-w-[1360px] mx-auto px-5 md:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-[1280px] mx-auto px-5 md:px-8 h-[72px] md:h-20 flex items-center justify-between">
           {/* Logo */}
-          <button onClick={() => setActiveTab('home')} className="flex-shrink-0">
+          <button onClick={() => setActiveTab('home')} className="flex-shrink-0 flex items-center">
             <img
               src="/campuspay-logo.png"
               alt="CampusPay"
-              className="h-8 w-auto object-contain"
+              className="w-[115px] md:w-[145px] object-contain object-left"
             />
           </button>
 
@@ -490,7 +489,18 @@ export default function StudentDashboard() {
       </header>
 
       {/* ── MAIN ───────────────────────────────────────────────────────────────── */}
-      <main className="max-w-[1360px] mx-auto px-4 md:px-8 pb-24 md:pb-16 pt-6 space-y-0 no-print">
+      <main className="max-w-[1280px] mx-auto px-4 md:px-8 pb-24 md:pb-16 pt-6 space-y-0 no-print">
+
+        {/* Global Desktop Back Button */}
+        {activeTab !== 'home' && (
+          <button 
+            onClick={() => setActiveTab('home')}
+            className="hidden md:flex items-center gap-2 text-[13px] font-bold text-slate-500 hover:text-indigo-600 transition-colors mb-6 group w-fit"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> 
+            Back to Dashboard
+          </button>
+        )}
 
         {/* ═══════════════════════════════════════════════════════
             HOME TAB
@@ -657,42 +667,112 @@ export default function StudentDashboard() {
             PROFILE TAB
         ════════════════════════════════════════════════════════ */}
         {activeTab === 'profile' && (
-          <div className="pt-2 space-y-6 max-w-xl">
+          <div className="pt-2 pb-12 max-w-4xl mx-auto space-y-6">
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">My Profile</h1>
-              <p className="text-sm text-slate-400 font-medium mt-1">Personal and academic information</p>
             </div>
 
-            {/* Identity card */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="h-20 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500" />
-              <div className="px-6 pb-6 -mt-10">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-indigo-500 to-violet-600 text-white flex items-center justify-center font-black text-2xl shadow-lg border-4 border-white mb-4">
-                  {user?.name ? user.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() : 'ST'}
+            {/* Identity Header */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col md:flex-row md:items-center p-6 gap-6">
+              <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-600 text-white flex items-center justify-center font-black text-2xl md:text-3xl shadow-lg border-4 border-white flex-shrink-0">
+                {user?.name ? user.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() : 'ST'}
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl md:text-2xl font-bold text-slate-900">{user?.name}</h2>
+                <div className="flex flex-wrap items-center gap-2 mt-1.5 text-sm font-medium text-slate-500">
+                  <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-xs font-bold uppercase tracking-wider">{user?.studentProfile?.rollNumber || 'No Roll #'}</span>
+                  <span>•</span>
+                  <span>Class {user?.studentProfile?.class || 'N/A'}</span>
+                  <span>•</span>
+                  <span>Section {user?.studentProfile?.section || 'N/A'}</span>
                 </div>
-                <h2 className="text-xl font-bold text-slate-900">{user?.name}</h2>
-                <p className="text-sm text-slate-400 flex items-center gap-1.5 mt-1">
-                  <Mail className="w-3.5 h-3.5" /> {user?.email}
-                </p>
               </div>
             </div>
 
-            {/* Info grid */}
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: 'Institution', value: user?.schoolName, icon: School, color: 'indigo' },
-                { label: 'Account Role', value: user?.role?.replace('_', ' '), icon: ShieldCheck, color: 'violet' },
-                { label: 'Outstanding', value: formatCurrency(calculations.outstanding), icon: AlertCircle, color: 'rose' },
-                { label: 'Pending Invoices', value: `${calculations.activeInvoicesCount} Active`, icon: FileText, color: 'amber' },
-              ].map(item => (
-                <div key={item.label} className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                  <div className="flex items-center gap-2 mb-2">
-                    <item.icon className={`w-3.5 h-3.5 text-${item.color}-500`} />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{item.label}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Personal Information */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 md:p-6 space-y-4">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-50 pb-2 mb-4">Personal Information</h3>
+                <div className="grid grid-cols-2 gap-y-4 gap-x-4">
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase">Full Name</span>
+                    <span className="text-sm font-semibold text-slate-900 truncate">{user?.name}</span>
                   </div>
-                  <span className="text-sm font-bold text-slate-800">{item.value || '—'}</span>
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase">Date of Birth</span>
+                    <span className="text-sm font-semibold text-slate-900">{user?.studentProfile?.dateOfBirth ? new Date(user.studentProfile.dateOfBirth).toLocaleDateString('en-GB') : '—'}</span>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase">Email</span>
+                    <span className="text-sm font-semibold text-slate-900 truncate block">{user?.email || '—'}</span>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase">Phone</span>
+                    <span className="text-sm font-semibold text-slate-900">{user?.phone || '—'}</span>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase">Gender</span>
+                    <span className="text-sm font-semibold text-slate-900">{user?.studentProfile?.gender || '—'}</span>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase">Blood Group</span>
+                    <span className="text-sm font-semibold text-slate-900">{user?.studentProfile?.bloodGroup || '—'}</span>
+                  </div>
                 </div>
-              ))}
+              </div>
+
+              {/* Academic Information */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 md:p-6 space-y-4">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-50 pb-2 mb-4">Academic Information</h3>
+                <div className="grid grid-cols-2 gap-y-4 gap-x-4">
+                  <div className="col-span-2">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase">Institution</span>
+                    <span className="text-sm font-semibold text-slate-900 truncate block">{user?.schoolName || '—'}</span>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase">Admission Date</span>
+                    <span className="text-sm font-semibold text-slate-900">{user?.studentProfile?.admissionDate ? new Date(user.studentProfile.admissionDate).toLocaleDateString('en-GB') : '—'}</span>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase">Roll Number</span>
+                    <span className="text-sm font-semibold text-slate-900">{user?.studentProfile?.rollNumber || '—'}</span>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase">Class & Section</span>
+                    <span className="text-sm font-semibold text-slate-900">{user?.studentProfile?.class || '—'} {user?.studentProfile?.section || ''}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Guardian Information */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 md:p-6 space-y-4">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-50 pb-2 mb-4">Guardian Information</h3>
+                <div className="grid grid-cols-2 gap-y-4 gap-x-4">
+                  <div className="col-span-2">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase">Guardian Name</span>
+                    <span className="text-sm font-semibold text-slate-900">{user?.studentProfile?.guardianName || '—'}</span>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase">Guardian Phone</span>
+                    <span className="text-sm font-semibold text-slate-900">{user?.studentProfile?.guardianPhone || '—'}</span>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase">Guardian Email</span>
+                    <span className="text-sm font-semibold text-slate-900 truncate block">{user?.studentProfile?.guardianEmail || '—'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Address */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 md:p-6 space-y-4">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-50 pb-2 mb-4">Address</h3>
+                <div className="grid grid-cols-1 gap-y-4">
+                  <div>
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase">Residential Address</span>
+                    <span className="text-sm font-semibold text-slate-900">{user?.studentProfile?.address || '—'}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}

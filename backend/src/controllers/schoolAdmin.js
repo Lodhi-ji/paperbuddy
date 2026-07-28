@@ -649,6 +649,7 @@ export async function getStudents(req, res) {
                 feeType: true,
               },
             },
+            transactions: true,
           },
         },
       },

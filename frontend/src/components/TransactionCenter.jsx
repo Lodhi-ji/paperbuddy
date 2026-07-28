@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '../api';
 import { 
   Search, 
   Download,
@@ -32,11 +34,24 @@ export default function TransactionCenter({
   txnStatus, setTxnStatus,
   setProfileStudentId
 }) {
+  const queryClient = useQueryClient();
   const [expandedRow, setExpandedRow] = useState(null);
   
   // Receipt Modal State
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [selectedReceiptTxn, setSelectedReceiptTxn] = useState(null);
+
+  const reconcileMutation = useMutation({
+    mutationFn: ({ id, status }) => api.patch(`/accountant/transactions/${id}/reconcile`, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accountantTransactions'] });
+      queryClient.invalidateQueries({ queryKey: ['adminTransactions'] });
+      queryClient.invalidateQueries({ queryKey: ['schoolTransactions'] });
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: ['schoolStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['accountantAllStudents'] });
+    }
+  });
 
   const handleOpenReceipt = (e, tx) => {
     e.stopPropagation();
@@ -373,6 +388,21 @@ export default function TransactionCenter({
                                   <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Fee Category</div>
                                   <div className="text-sm font-bold text-slate-700">{tx.studentFee?.feeStructure?.feeType?.name || 'General'}</div>
                                 </div>
+                                
+                                {tx.method === 'CHEQUE' && (
+                                  <>
+                                    <div>
+                                      <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Cheque Number</div>
+                                      <div className="text-sm font-mono font-bold text-slate-700">{tx.chequeNumber || 'N/A'}</div>
+                                    </div>
+                                    <div>
+                                      <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Cheque Date</div>
+                                      <div className="text-sm font-bold text-slate-700">
+                                        {tx.chequeDate ? new Date(tx.chequeDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
                               </div>
                               <div className="mt-6 pt-4 border-t border-slate-200/60 flex gap-3">
                                 <button 
@@ -385,6 +415,26 @@ export default function TransactionCenter({
                                   <button className="px-4 py-2 rounded-lg bg-white border border-slate-200 text-xs font-bold text-rose-600 shadow-sm hover:bg-rose-50 flex items-center gap-2">
                                     <RotateCcw className="w-3.5 h-3.5" /> Issue Refund
                                   </button>
+                                )}
+                                {tx.method === 'CHEQUE' && tx.status === 'PENDING' && (
+                                  <>
+                                    <button 
+                                      onClick={() => reconcileMutation.mutate({ id: tx.id, status: 'CLEARED' })}
+                                      disabled={reconcileMutation.isPending}
+                                      className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold shadow-sm hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                      {reconcileMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />} 
+                                      Mark as Cleared
+                                    </button>
+                                    <button 
+                                      onClick={() => reconcileMutation.mutate({ id: tx.id, status: 'BOUNCED' })}
+                                      disabled={reconcileMutation.isPending}
+                                      className="px-4 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold shadow-sm hover:bg-rose-100 disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                      {reconcileMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />} 
+                                      Mark as Bounced
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             </div>
