@@ -11,6 +11,8 @@ export default function SendReminderModal({ fee, onClose }) {
     mutationFn: () => api.post(`/school-admin/student-fees/${fee.id}/reminder`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: ['schoolStudents'] });
+      queryClient.invalidateQueries({ queryKey: ['accountantAllStudents'] });
       onClose();
     },
     onError: (err) => {

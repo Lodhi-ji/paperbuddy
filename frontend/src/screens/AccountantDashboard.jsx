@@ -12,6 +12,7 @@ import {
   CheckCircle,
   AlertTriangle,
   Loader2,
+  FileText,
 } from 'lucide-react';
 
 export default function AccountantDashboard() {
@@ -21,6 +22,7 @@ export default function AccountantDashboard() {
   // States for Student Directory
   const [studentSearch, setStudentSearch] = useState('');
   const [studentFilterClass, setStudentFilterClass] = useState('');
+  const [showOverdueOnly, setShowOverdueOnly] = useState(false);
   
   // States for Student 360 View
   const [profileStudentId, setProfileStudentId] = useState(null);
@@ -96,24 +98,26 @@ export default function AccountantDashboard() {
                   </div>
                 </div>
                 <div className="glass-card rounded-2xl p-5 border border-white/40 shadow-sm flex items-center gap-4 hover:-translate-y-1 transition-transform">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600">
-                    <CheckCircle className="w-6 h-6" />
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600">
+                    <AlertTriangle className="w-6 h-6" />
                   </div>
                   <div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Students</div>
-                    <div className="text-2xl font-black text-slate-800">{students?.length || 0}</div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pending Due Students</div>
+                    <div className="text-2xl font-black text-slate-800">
+                      {students?.filter(st => st.studentFees?.some(f => f.status !== 'PAID'))?.length || 0}
+                    </div>
                   </div>
                 </div>
                 <div className="glass-card rounded-2xl p-5 border border-white/40 shadow-sm flex items-center gap-4 hover:-translate-y-1 transition-transform">
                   <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-600">
-                    <AlertTriangle className="w-6 h-6" />
+                    <FileText className="w-6 h-6" />
                   </div>
                   <div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Outstanding Fees</div>
                     <div className="text-2xl font-black text-slate-800">
                       {formatCurrency(
                         students?.reduce((total, st) => {
-                          return total + (st.studentFees?.reduce((sum, f) => sum + (f.status === 'PENDING' ? Number(f.amountDue) : 0), 0) || 0);
+                          return total + (st.studentFees?.reduce((sum, f) => sum + (f.status !== 'PAID' ? Number(f.amountDue || f.amount || 0) : 0), 0) || 0);
                         }, 0) || 0
                       )}
                     </div>
@@ -144,6 +148,16 @@ export default function AccountantDashboard() {
                       <option key={i + 1} value={String(i + 1)}>Class {i + 1}</option>
                     ))}
                   </select>
+                  <button
+                    onClick={() => setShowOverdueOnly(!showOverdueOnly)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all shrink-0 ${
+                      showOverdueOnly 
+                        ? 'bg-rose-50 border-rose-200 text-rose-600 shadow-sm' 
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {showOverdueOnly ? 'Showing Overdue Only' : 'Show Overdue Only'}
+                  </button>
                 </div>
               </div>
 
@@ -174,6 +188,12 @@ export default function AccountantDashboard() {
                               const hasPending = s.studentFees?.some(f => f.status === 'UNPAID' || f.status === 'PARTIAL');
                               if (!hasPending) return false;
                             }
+
+                            if (showOverdueOnly) {
+                              const isOverdue = s.studentFees?.some(f => (f.status === 'UNPAID' || f.status === 'PARTIAL') && new Date(f.dueDate).setHours(0,0,0,0) < new Date().setHours(0,0,0,0));
+                              if (!isOverdue) return false;
+                            }
+
                             const matchSearch = s.user.name.toLowerCase().includes(studentSearch.toLowerCase()) || s.rollNumber.toLowerCase().includes(studentSearch.toLowerCase());
                             const matchClass = studentFilterClass ? s.class === studentFilterClass : true;
                             return matchSearch && matchClass;

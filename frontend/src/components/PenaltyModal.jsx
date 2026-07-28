@@ -16,7 +16,7 @@ export default function PenaltyModal({ fee, onClose }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['schoolStudents'] });
-      queryClient.invalidateQueries({ queryKey: ['accountant-students'] });
+      queryClient.invalidateQueries({ queryKey: ['accountantAllStudents'] });
       queryClient.invalidateQueries({ queryKey: ['schoolMetrics'] });
       queryClient.invalidateQueries({ queryKey: ['accountant-metrics'] });
       onClose();

@@ -94,7 +94,7 @@ export default function Login() {
   return (
     <div 
       ref={containerRef}
-      className="min-h-screen w-full bg-[#070913] text-white font-sans antialiased overflow-hidden relative flex flex-col md:flex-row items-center justify-between"
+      className="min-h-screen w-full bg-[#0F1224] text-white font-sans antialiased overflow-hidden relative flex flex-col md:flex-row items-center justify-between"
     >
       
       {/* Back Button */}
@@ -109,7 +109,7 @@ export default function Login() {
       <div 
         className="absolute pointer-events-none inset-0 transition-opacity duration-300 z-0"
         style={{
-          background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, rgba(91, 92, 235, 0.07), transparent 80%)`,
+          background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, rgba(91, 92, 235, 0.09), transparent 80%)`,
         }}
       />
 
@@ -117,8 +117,8 @@ export default function Login() {
       <div className="absolute inset-0 z-0 opacity-20 pointer-events-none bg-[linear-gradient(to_right,#1f2937_1px,transparent_1px),linear-gradient(to_bottom,#1f2937_1px,transparent_1px)] bg-[size:40px_40px]" />
       
       {/* 3. Subtle ambient light flows */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-900/10 rounded-full filter blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#5B5CEB]/5 rounded-full filter blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-900/20 rounded-full filter blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#5B5CEB]/10 rounded-full filter blur-[120px] pointer-events-none" />
 
       {/* LEFT AREA: The Orbiting Financial Ecosystem */}
       <div className="relative z-10 w-full md:w-1/2 h-[50vh] md:h-screen flex items-center justify-center select-none overflow-hidden">
@@ -196,8 +196,12 @@ export default function Login() {
               }}
               className="absolute z-15 w-14 h-14 bg-slate-900/80 backdrop-blur-md rounded-2xl border border-white/10 shadow-lg flex flex-col items-center justify-center p-2 text-center hover:border-[#5B5CEB]/50 transition-colors cursor-pointer group"
             >
-              <div className="group-hover:scale-110 transition-transform duration-300">{node.icon}</div>
-              <span className="text-[7px] text-slate-400 font-bold tracking-wider uppercase mt-1 whitespace-nowrap hidden group-hover:block transition-all absolute -bottom-5 bg-slate-950 px-1.5 py-0.5 rounded border border-white/5">
+              <div 
+                className="absolute inset-0 rounded-2xl pointer-events-none" 
+                style={{ animation: `pulseGlow ${3 + i}s infinite ease-out` }} 
+              />
+              <div className="group-hover:scale-110 transition-transform duration-300 relative z-10">{node.icon}</div>
+              <span className="text-[7px] text-slate-400 font-bold tracking-wider uppercase mt-1 whitespace-nowrap hidden group-hover:block transition-all absolute -bottom-5 bg-slate-950 px-1.5 py-0.5 rounded border border-white/5 z-20">
                 {node.label}
               </span>
             </motion.div>

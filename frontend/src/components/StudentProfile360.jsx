@@ -65,6 +65,7 @@ export default function StudentProfile360({ student, onClose, onEdit, onDelete, 
   const [selectedReceiptFee, setSelectedReceiptFee] = useState(null);
   const [selectedFeesForBulk, setSelectedFeesForBulk] = useState([]);
   const [isBulkMode, setIsBulkMode] = useState(false);
+  const [showOverdueOnly, setShowOverdueOnly] = useState(false);
 
   const handleReceiptClick = (fee) => {
     if (fee.status === 'UNPAID') {
@@ -404,16 +405,28 @@ export default function StudentProfile360({ student, onClose, onEdit, onDelete, 
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white/40">
                   <div className="flex items-center gap-4">
                     <h3 className="text-sm font-black text-slate-800">Recent Payments & Fees</h3>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowOverdueOnly(!showOverdueOnly)}
+                        className={`border text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow-sm ${
+                          showOverdueOnly 
+                            ? 'bg-rose-50 border-rose-200 text-rose-600' 
+                            : 'bg-white border-slate-200 text-slate-600 hover:text-brand-primary'
+                        }`}
+                      >
+                        <AlertTriangle className="w-3.5 h-3.5" /> {showOverdueOnly ? 'Showing Overdue' : 'Overdue Only'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
                     {!isBulkMode && (
                       <button
                         onClick={() => setIsBulkMode(true)}
                         className="bg-white border border-slate-200 text-slate-600 hover:text-brand-primary text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow-sm"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Multiple Payments
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Do Multiple Payments
                       </button>
                     )}
-                  </div>
-                  <div className="flex items-center gap-2">
                     {isBulkMode && (
                       <button
                         onClick={() => {
@@ -470,7 +483,12 @@ export default function StudentProfile360({ student, onClose, onEdit, onDelete, 
                       </tr>
                     </thead>
                     <tbody>
-                      {student.studentFees && student.studentFees.map(fee => {
+                      {student.studentFees && student.studentFees.filter(fee => {
+                        if (showOverdueOnly) {
+                          return (fee.status === 'UNPAID' || fee.status === 'PARTIAL') && new Date(fee.dueDate).setHours(0,0,0,0) < new Date().setHours(0,0,0,0);
+                        }
+                        return true;
+                      }).map(fee => {
                         const isSelectable = fee.status !== 'PAID';
                         return (
                           <tr key={fee.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/80 transition-colors group">
